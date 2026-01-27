@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Dashboard</title>
+</head>
+<body>
+
+<h1>Admin Dashboard</h1>
+<button id="logout">Logout</button>
+
+<script type="module">
+import { supabase } from "./supabase.js";
+
+document.getElementById("logout").addEventListener("click", async () => {
+    await supabase.auth.signOut();
+    window.location.href = "auth.html";
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Open student.html",
+            "file": "c:\\Users\\kamat\\Documents\\hackoverflow 2026 cultang\\v1 fork clone\\campus_connect\\student.html"
+        }
+    ]
+}
