@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
-import { ArrowLeft, Calendar, MapPin, Clock, Search, Info } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Search, Info, Navigation } from 'lucide-react';
 import { Event } from '../types';
 
+// FIX: Added 'events' back to the interface
 interface EventsDashboardProps {
-  events: Event[];
+  events: Event[]; 
   onBack: () => void;
   onShowVenue: (locationId: string, eventId: string) => void;
 }
@@ -13,7 +14,6 @@ export function EventsDashboard({ events, onBack, onShowVenue }: EventsDashboard
   const [filter, setFilter] = useState<'all' | 'academic' | 'cultural' | 'sports'>('all');
   const [search, setSearch] = useState('');
 
-  // Helper to format 24h time to 12h AM/PM
   const formatTime = (time: string) => {
     if(!time) return '';
     const [hours, minutes] = time.split(':');
@@ -25,8 +25,7 @@ export function EventsDashboard({ events, onBack, onShowVenue }: EventsDashboard
 
   const filteredEvents = events.filter(e => {
     const matchesFilter = filter === 'all' || e.type === filter;
-    const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase()) || 
-                          e.venue.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = e.title.toLowerCase().includes(search.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -57,9 +56,7 @@ export function EventsDashboard({ events, onBack, onShowVenue }: EventsDashboard
               key={f}
               onClick={() => setFilter(f as any)}
               className={`px-4 py-1.5 rounded-full text-xs font-medium capitalize whitespace-nowrap transition-colors ${
-                filter === f 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filter === f ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {f}
@@ -78,11 +75,7 @@ export function EventsDashboard({ events, onBack, onShowVenue }: EventsDashboard
           filteredEvents.map(event => (
             <div key={event.id} className="bg-white rounded-xl shadow-sm border overflow-hidden hover:shadow-md transition-shadow">
               <div className="h-32 bg-gray-200 relative">
-                <img 
-                  src={event.bannerImage || "https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=500"} 
-                  alt={event.title}
-                  className="w-full h-full object-cover"
-                />
+                <img src={event.bannerImage || "https://via.placeholder.com/500"} alt={event.title} className="w-full h-full object-cover" />
                 <div className="absolute top-2 right-2 bg-white/90 px-2 py-1 rounded text-xs font-bold uppercase tracking-wider text-gray-700">
                   {event.type}
                 </div>
@@ -92,40 +85,29 @@ export function EventsDashboard({ events, onBack, onShowVenue }: EventsDashboard
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-bold text-lg text-gray-900 leading-tight">{event.title}</h3>
                   <div className="text-center bg-blue-50 px-2 py-1 rounded-lg min-w-[3rem]">
-                    <span className="block text-xs font-bold text-blue-600 uppercase">
-                      {new Date(event.date).toLocaleString('default', { month: 'short' })}
-                    </span>
-                    <span className="block text-lg font-bold text-blue-800 leading-none">
-                      {new Date(event.date).getDate()}
-                    </span>
+                    <span className="block text-xs font-bold text-blue-600 uppercase">{new Date(event.date).toLocaleString('default', { month: 'short' })}</span>
+                    <span className="block text-lg font-bold text-blue-800 leading-none">{new Date(event.date).getDate()}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-4">
-                  {/* NEW: DISPLAY TIME RANGE */}
                   <div className="flex items-center text-sm text-gray-600 font-medium bg-blue-50 p-2 rounded-md">
                     <Clock className="w-4 h-4 mr-2 text-blue-500" />
                     {formatTime(event.startTime)} - {formatTime(event.endTime)}
                   </div>
-
                   <div className="flex items-center text-sm text-gray-600">
-                    <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-                    {event.venue}
+                    <MapPin className="w-4 h-4 mr-2 text-gray-400" /> {event.venue}
                   </div>
                   {event.venueDetails && (
                     <div className="flex items-start text-sm text-gray-500 bg-gray-50 p-2 rounded-lg mt-1">
-                       <Info className="w-4 h-4 mr-2 text-blue-400 shrink-0 mt-0.5" />
-                       <span className="text-xs">{event.venueDetails}</span>
+                        <Info className="w-4 h-4 mr-2 text-blue-400 shrink-0 mt-0.5" />
+                        <span className="text-xs">{event.venueDetails}</span>
                     </div>
                   )}
                 </div>
 
-                <Button 
-                  className="w-full bg-slate-900 text-white hover:bg-slate-800"
-                  onClick={() => onShowVenue(event.locationId, event.id)}
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  Navigate to Venue
+                <Button className="w-full bg-slate-900 text-white hover:bg-slate-800" onClick={() => onShowVenue(event.locationId, event.id)}>
+                  <Navigation className="w-4 h-4 mr-2" /> Navigate to Venue
                 </Button>
               </div>
             </div>

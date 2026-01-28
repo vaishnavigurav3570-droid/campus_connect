@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient'; 
 import { Session } from '@supabase/supabase-js'; 
-import { Toaster } from './components/ui/sonner';
+import { Toaster, toast } from 'sonner';
+
+// Components
 import { StudentMainMap } from './components/StudentMainMap';
 import { StaffSearchResult } from './components/StaffSearchResult';
 import { ActiveNavigation } from './components/ActiveNavigation';
@@ -15,6 +17,7 @@ import { AdminPanoramaUpload } from './components/AdminPanoramaUpload';
 import { AdminEventManagement } from './components/AdminEventManagement';
 import { AdminNotificationSender } from './components/AdminNotificationSender';
 import { CommunityFeed } from './components/CommunityFeed'; 
+import { PostsDashboard } from './components/PostsDashboard'; // Use PostsDashboard for community
 import { UserProfile } from './components/UserProfile'; 
 import Auth from './components/Auth'; 
 
@@ -22,7 +25,6 @@ import { staffMembers as initialStaff, locations as initialLocations, events as 
 import { UserRole, Staff, Location, Event, Notification } from './types';
 import { Button } from './components/ui/button';
 import { Shield, LogOut } from 'lucide-react';
-import { toast } from 'sonner';
 
 type Screen = 
   | 'auth'            
@@ -76,20 +78,23 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- 2. LOAD MOCK DATA ---
+  // --- 2. LOAD MOCK DATA (Local Storage) ---
   useEffect(() => {
     const savedStaff = localStorage.getItem('gec_staff');
     const savedLocs = localStorage.getItem('gec_locations');
     const savedEvents = localStorage.getItem('gec_events');
     const savedNotes = localStorage.getItem('gec_notifications');
+    
     setStaffList(savedStaff ? JSON.parse(savedStaff) : initialStaff);
     setLocationList(savedLocs ? JSON.parse(savedLocs) : initialLocations);
     setEventsList(savedEvents ? JSON.parse(savedEvents) : initialEvents);
     setNotifications(savedNotes ? JSON.parse(savedNotes) : []);
-  }, []);
+  }, [currentScreen]); // Reload when screen changes to sync admin updates
 
   const selectedStaff = selectedStaffId ? staffList.find(s => s.id === selectedStaffId) : null;
-  const selectedLocation = selectedLocationId ? locationList.find(l => l.id === selectedLocationId) : selectedStaff ? locationList.find(l => l.id === selectedStaff.locationId) : null;
+  // Resolve location object for navigation
+  const selectedLocation = selectedLocationId ? locationList.find(l => l.id === selectedLocationId) : 
+                           selectedStaff ? locationList.find(l => l.id === selectedStaff.locationId) : null;
 
   // --- HANDLERS ---
   const handleLogout = async () => {
@@ -102,7 +107,6 @@ export default function App() {
     setCurrentScreen('admin-dashboard');
   };
 
-  // --- MISSING HANDLERS ADDED HERE ---
   const handleSetPin = () => {
     setCurrentScreen('admin-pick-location');
   };
@@ -111,7 +115,6 @@ export default function App() {
     setTempLocation({ lat, lng });
     setCurrentScreen('admin-add-staff');
   };
-  // -----------------------------------
 
   const handleSearch = (query: string) => {
     const lowerQuery = query.toLowerCase();
@@ -241,7 +244,8 @@ export default function App() {
           onNavigateToSearch={handleSearch}
           onNavigateToEvents={() => { setCurrentScreen('events'); setActiveTab('events'); }}
           onNavigateToNotifications={() => setActiveTab('notifications')}
-          onNavigateToCommunity={() => { setCurrentScreen('community'); setActiveTab('community'); }}
+          // FIX: Changed to 'onNavigateToPosts' to match the component
+          onNavigateToPosts={() => { setCurrentScreen('community'); setActiveTab('community'); }}
           onNavigateBackToMap={() => setActiveTab('home')}
           onNavigateToProfile={() => setCurrentScreen('profile')}
           activeTab={activeTab}
@@ -261,9 +265,8 @@ export default function App() {
       )}
 
       {currentScreen === 'community' && session && (
-        <CommunityFeed 
+        <PostsDashboard 
           onBack={() => { setCurrentScreen('student-map'); setActiveTab('home'); }} 
-          session={session}
         />
       )}
 
@@ -285,9 +288,10 @@ export default function App() {
         />
       )}
 
+      {/* FIX: Now 'EventsDashboard' accepts the 'events' prop */}
       {currentScreen === 'events' && (
         <EventsDashboard
-          events={eventsList}
+          events={eventsList} 
           onBack={() => { setCurrentScreen('student-map'); setActiveTab('home'); }}
           onShowVenue={(locId: string, eventId: string) => { 
              setSelectedLocationId(locId); 
