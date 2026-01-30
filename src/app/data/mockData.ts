@@ -27,36 +27,9 @@ export const locations: Location[] = [
   { id: 'loc-iit', name: 'IIT Hostel', building: 'IIT Block', floor: 'Ground', lat: 15.42288, lng: 73.98290, category: 'hostel' },
 ];
 
-export const staffMembers: Staff[] = [
-  { id: 'staff-1', name: 'teslin sir', designation: 'Professor', department: 'Computer Engineering', photo: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=100', locationId: 'loc-comp' },
-  { id: 'staff-2', name: 'Prof. S. Pawar', designation: 'HOD', department: 'Information Technology', photo: 'https://images.unsplash.com/photo-1573496359-0933ca935f9d?w=100', locationId: 'loc-it' },
-  { id: 'staff-3', name: 'Dr. R. Shirodkar', designation: 'Associate Prof', department: 'Mechanical', photo: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', locationId: 'loc-mech' },
-];
 
-export const events: Event[] = [
-  { 
-    id: 'evt-1', 
-    title: 'Tech Spectrum 2026', 
-    date: '2026-02-15', 
-    startTime: '10:00', // Now valid because we imported the type
-    endTime: '17:00', 
-    locationId: 'loc-admin', 
-    type: 'cultural', 
-    bannerImage: 'https://i.postimg.cc/5tqS3B1Q/t1.jpg', 
-    venue: 'Admin Auditorium' 
-  },
-  { 
-    id: 'evt-2', 
-    title: 'AI Workshop', 
-    date: '2026-02-18', 
-    startTime: '14:00', 
-    endTime: '16:00', 
-    locationId: 'loc-comp', 
-    type: 'academic', 
-    bannerImage: 'https://i.postimg.cc/5tqS3B1Q/t1.jpg', 
-    venue: 'Computer Seminar Hall' 
-  },
-];
+
+
 
 export const paths: any[] = []; 
 export const CUSTOM_PATHS: Record<string, { lat: number; lng: number }[]> = {};
@@ -171,9 +144,6 @@ export const CAMPUS_ROADS: { lat: number; lng: number }[][] = [
 
 // --- 360 PANORAMA STORAGE ---
 export const PANORAMA_DATA: Record<string, string> = {
-  // Events
-  'evt-1': 'https://i.postimg.cc/5tqS3B1Q/t1.jpg',
-  'evt-2': 'https://i.postimg.cc/5tqS3B1Q/t1.jpg',
   // Turns
   '15.42381,73.98136': 'https://i.postimg.cc/PrBKyrGP/1p.jpg',
   '15.42383,73.98069': 'https://i.postimg.cc/qR527j4y/2p.jpg',
@@ -185,5 +155,6 @@ export const PANORAMA_DATA: Record<string, string> = {
   '15.42419,73.97882': 'https://i.postimg.cc/4x1Y2B7C/8p.jpg',
   '15.42380,73.97948': 'https://i.postimg.cc/pLVWrxT4/9p.jpg',
   '15.42382,73.98033': 'https://i.postimg.cc/fWjQ9F6T/10p.jpg',
-  'staff-1': 'https://i.postimg.cc/5tqS3B1Q/t1.jpg',
+  'Computer Engineering Dept': 'https://i.postimg.cc/5tqS3B1Q/t1.jpg',
+  '': '',
 };

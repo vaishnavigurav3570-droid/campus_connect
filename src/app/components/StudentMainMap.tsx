@@ -3,15 +3,15 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
-  Search, Calendar, Bell, Home, Users, LogOut, User as UserIcon, 
-  ChevronRight, Lock, AlertTriangle, Navigation, Map as MapIcon 
+  Search, Calendar, Bell, Users, User as UserIcon, 
+  Navigation, Map as MapIcon, AlertTriangle, Lock, Image as ImageIcon 
 } from 'lucide-react';
-import { GEC_CENTER, locations, CAMPUS_ROADS } from '../data/mockData';
+import { GEC_CENTER, locations as staticLocations, CAMPUS_ROADS } from '../data/mockData';
 import { NotificationList } from './NotificationList';
 import { supabase } from '../supabaseClient';
 import { toast } from 'sonner';
 
-// Import Logo (Double jump .. to reach assets)
+// Import Logo
 import LogoSrc from '../../assets/logo.jpeg';
 
 // --- ICONS ---
@@ -26,7 +26,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// Custom SOS Icon (Red & Pulsing)
+// Custom SOS Icon
 const sosIcon = new L.DivIcon({
   className: 'custom-div-icon',
   html: `<div style="background-color: #ef4444; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4); animation: pulse 1.5s infinite;"></div>`,
@@ -34,7 +34,7 @@ const sosIcon = new L.DivIcon({
   iconAnchor: [12, 12]
 });
 
-// Custom Markers for Map (Teal)
+// Custom Markers Helper
 const createCustomIcon = (color: string) => L.divIcon({
   className: 'custom-marker',
   html: `<div style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
@@ -55,6 +55,8 @@ interface StudentMainMapProps {
   session: any;
   onLogout: () => void;
   isGuest?: boolean;
+  staffList?: any[];
+  eventList?: any[];
 }
 
 export function StudentMainMap({ 
@@ -69,10 +71,11 @@ export function StudentMainMap({
   onVote,
   session,
   onLogout,
-  isGuest = false 
+  isGuest = false,
+  staffList = [], 
+  eventList = [] 
 }: StudentMainMapProps) {
   
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   
   // --- SOS STATE ---
@@ -81,10 +84,9 @@ export function StudentMainMap({
   const [currentSOSId, setCurrentSOSId] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
-  const userInitial = isGuest ? "G" : (session?.user?.email?.charAt(0).toUpperCase() || "U");
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // 1. Fetch Active SOS Signals & Restore State on Load
+  // 1. SOS & Realtime Logic
   useEffect(() => {
     const fetchSOS = async () => {
       const { data } = await supabase.from('sos_signals').select('*').eq('status', 'active');
@@ -184,38 +186,42 @@ export function StudentMainMap({
   return (
     <div className="h-full w-full relative bg-slate-100 flex flex-col font-sans overflow-hidden">
       
-      {/* --- FLOATING HEADER (Logo + Search) --- */}
+      {/* --- FLOATING HEADER (Glassmorphism Applied) --- */}
       {!isSOSActive && (
       <div className="absolute top-0 left-0 w-full z-[500] p-4 flex flex-col gap-3 pointer-events-none">
+        
         {/* Top Row: Logo & Bell */}
         <div className="flex justify-between items-center pointer-events-auto">
-            <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-white/50 flex items-center gap-2">
+            {/* LOGO - Now using .glass-panel */}
+            <div className="glass-panel px-4 py-2 rounded-full flex items-center gap-2">
                 <img src={LogoSrc} alt="Logo" className="w-6 h-6 object-contain" />
-                <span className="text-xs font-bold text-slate-800">GEC Navigator</span>
+                <span className="text-xs font-bold text-slate-800 tracking-tight font-outfit">GEC Navigator</span>
             </div>
+            
             {!isGuest && (
-            <button onClick={onNavigateToNotifications} className="w-10 h-10 bg-white/90 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-slate-600 border border-white/50 relative hover:scale-105 transition-transform">
+            // BELL - Now using .glass-panel
+            <button onClick={onNavigateToNotifications} className="w-10 h-10 glass-panel rounded-full flex items-center justify-center text-slate-600 relative hover:scale-105 transition-transform active:scale-95">
                 <Bell size={20} />
                 {unreadCount > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white"></span>}
             </button>
             )}
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar - Now using .glass-panel */}
         <form onSubmit={handleSearch} className="pointer-events-auto shadow-xl shadow-slate-200/50">
             <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-slate-400 group-focus-within:text-cyan-600 transition-colors" />
+                    <Search className="h-5 w-5 text-slate-500 group-focus-within:text-blue-600 transition-colors" />
                 </div>
                 <input
                     type="text"
-                    className="block w-full pl-11 pr-4 py-3.5 bg-white/95 backdrop-blur-xl border-0 rounded-2xl text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500/20 outline-none transition-all text-sm font-medium"
+                    className="glass-panel block w-full pl-11 pr-4 py-3.5 rounded-2xl text-slate-900 placeholder:text-slate-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all text-sm font-medium"
                     placeholder="Search locations..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
                 <button type="submit" className="absolute inset-y-0 right-1.5 flex items-center">
-                    <div className="bg-cyan-500 p-2 rounded-xl text-white shadow-md shadow-cyan-200 hover:bg-cyan-600 transition-colors">
+                    <div className="bg-blue-600 p-2 rounded-xl text-white shadow-md shadow-blue-200 hover:bg-blue-700 transition-colors">
                         <Navigation size={16} fill="currentColor" />
                     </div>
                 </button>
@@ -242,16 +248,54 @@ export function StudentMainMap({
         <MapContainer center={[GEC_CENTER.lat, GEC_CENTER.lng]} zoom={18} zoomControl={false} style={{ height: '100%', width: '100%' }}>
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
+            {/* 1. Roads */}
             {CAMPUS_ROADS.map((road, i) => (
                <Polyline key={i} positions={road} pathOptions={{ color: '#94a3b8', weight: 4, opacity: 0.5 }} />
             ))}
             
-            {locations.map(loc => (
+            {/* 2. Static Locations */}
+            {staticLocations.map(loc => (
               <Marker key={loc.id} position={[loc.lat, loc.lng]} icon={createCustomIcon('#06b6d4')}>
                    <Popup className="font-sans font-bold text-slate-700">{loc.name}</Popup>
               </Marker>
             ))}
 
+            {/* 3. REAL STAFF PINS (Blue) */}
+            {staffList.map((staff) => (
+                (staff.lat && staff.lng) ? (
+                    <Marker key={staff.id} position={[staff.lat, staff.lng]} icon={createCustomIcon('#2563eb')}>
+                        <Popup className="rounded-xl overflow-hidden p-0 border-none">
+                            <div className="text-center p-2 min-w-[120px]">
+                                <h3 className="font-bold text-sm text-slate-800">{staff.name}</h3>
+                                <p className="text-xs text-blue-600">{staff.role}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">{staff.cabin_location}</p>
+                                {staff.cabin_panorama_url && (
+                                    <span className="mt-1 px-2 py-0.5 bg-cyan-50 text-cyan-700 text-[10px] rounded-full border border-cyan-100 font-bold flex items-center justify-center gap-1">
+                                        <ImageIcon size={10}/> 360° View
+                                    </span>
+                                )}
+                            </div>
+                        </Popup>
+                    </Marker>
+                ) : null
+            ))}
+
+            {/* 4. REAL EVENT PINS (Purple) */}
+            {eventList.map((event) => (
+                (event.lat && event.lng) ? (
+                    <Marker key={event.id} position={[event.lat, event.lng]} icon={createCustomIcon('#7c3aed')}>
+                        <Popup className="rounded-xl overflow-hidden p-0 border-none">
+                            <div className="text-center p-2 min-w-[120px]">
+                                <h3 className="font-bold text-sm text-slate-800">{event.title}</h3>
+                                <p className="text-xs text-purple-600">{event.venue_name}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">{event.date}</p>
+                            </div>
+                        </Popup>
+                    </Marker>
+                ) : null
+            ))}
+
+            {/* 5. SOS Signals */}
             {activeSOSSignals.map(signal => (
                <Marker key={signal.id} position={[signal.lat, signal.lng]} icon={sosIcon}>
                   <Popup className="text-red-600 font-bold">⚠️ SOS ACTIVE</Popup>
@@ -259,7 +303,7 @@ export function StudentMainMap({
             ))}
         </MapContainer>
 
-        {/* SOS FAB (Floating Action Button) */}
+        {/* SOS FAB */}
         {!isGuest && !isSOSActive && (
             <button onClick={toggleSOS} className="absolute bottom-6 right-4 z-[500] w-14 h-14 bg-red-600 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform border-4 border-white/20">
                 <AlertTriangle size={24} />
@@ -268,7 +312,7 @@ export function StudentMainMap({
       </div>
 
       {/* --- BOTTOM NAVIGATION BAR --- */}
-      <div className="bg-white border-t border-slate-100 px-6 py-3 pb-6 flex justify-between items-center z-[500] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl relative">
+      <div className="bg-white/80 backdrop-blur-md border-t border-slate-100 px-6 py-3 pb-6 flex justify-between items-center z-[500] shadow-[0_-4px_20px_rgba(0,0,0,0.05)] rounded-t-3xl relative">
           
           <NavButton active={activeTab === 'home'} onClick={onNavigateBackToMap} icon={MapIcon} label="Map" />
           
@@ -282,7 +326,7 @@ export function StudentMainMap({
               <button 
                 onClick={() => !isGuest && onNavigateToEvents()}
                 disabled={isGuest}
-                className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform ring-4 ring-white ${isGuest ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-tr from-cyan-500 to-blue-600 shadow-cyan-200'}`}
+                className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-xl hover:scale-105 transition-transform ring-4 ring-white ${isGuest ? 'bg-slate-300 cursor-not-allowed' : 'bg-gradient-to-tr from-blue-600 to-cyan-500 shadow-blue-200'}`}
               >
                   <Calendar size={24} />
               </button>
@@ -315,10 +359,10 @@ function NavButton({ active, onClick, icon: Icon, label, disabled }: any) {
         >
             <Icon 
                 size={24} 
-                className={`transition-colors ${active ? 'text-cyan-600 fill-cyan-100' : 'text-slate-300 group-hover:text-slate-400'}`} 
+                className={`transition-colors ${active ? 'text-blue-600 fill-blue-50' : 'text-slate-300 group-hover:text-slate-400'}`} 
                 strokeWidth={active ? 2.5 : 2}
             />
-            <span className={`text-[10px] font-bold transition-colors ${active ? 'text-cyan-600' : 'text-slate-300'}`}>
+            <span className={`text-[10px] font-bold transition-colors ${active ? 'text-blue-600' : 'text-slate-300'}`}>
                 {label}
             </span>
             {disabled && <Lock size={10} className="absolute top-0 right-2 text-slate-400" />}

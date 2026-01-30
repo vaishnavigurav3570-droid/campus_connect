@@ -1,8 +1,8 @@
-import React from 'react';
-import { Button } from './ui/button';
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../supabaseClient';
 import { 
   Users, Map, Calendar, Bell, LogOut, 
-  ChevronRight, Shield, Layers, PlusCircle, LayoutDashboard 
+  ChevronRight, Shield, Layers 
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -23,12 +23,38 @@ export function AdminDashboard({
   onSwitchToStudent 
 }: AdminDashboardProps) {
 
+  // State to hold real numbers
+  const [stats, setStats] = useState({
+    events: 0,
+    staff: 0,
+    alerts: 0
+  });
+
+  // Fetch real counts on load
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { count: eventCount } = await supabase.from('events').select('*', { count: 'exact', head: true });
+        const { count: staffCount } = await supabase.from('staff').select('*', { count: 'exact', head: true });
+        const { count: alertCount } = await supabase.from('notifications').select('*', { count: 'exact', head: true });
+
+        setStats({
+          events: eventCount || 0,
+          staff: staffCount || 0,
+          alerts: alertCount || 0
+        });
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
       
       {/* --- HEADER --- */}
       <div className="bg-slate-900 text-white px-6 py-8 rounded-b-[2.5rem] shadow-2xl relative overflow-hidden">
-        {/* Decorative Circles */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-slate-800 rounded-full blur-3xl -mr-16 -mt-16 opacity-50 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-40 h-40 bg-cyan-900 rounded-full blur-2xl -ml-10 -mb-10 opacity-50 pointer-events-none"></div>
 
@@ -56,20 +82,20 @@ export function AdminDashboard({
       <div className="flex-1 px-6 -mt-8 z-20 pb-10">
         <div className="grid grid-cols-1 gap-4">
             
-            {/* Quick Stats (Placeholder) */}
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-around mb-2">
-                <div className="text-center">
-                    <p className="text-2xl font-bold text-slate-800">12</p>
+            {/* Quick Stats (Now Dynamic!) */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-around mb-2 animate-in fade-in slide-in-from-bottom-4">
+                <div className="text-center w-1/3">
+                    <p className="text-2xl font-bold text-slate-800">{stats.events}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-bold">Events</p>
                 </div>
                 <div className="w-px h-8 bg-slate-100"></div>
-                <div className="text-center">
-                    <p className="text-2xl font-bold text-slate-800">48</p>
+                <div className="text-center w-1/3">
+                    <p className="text-2xl font-bold text-slate-800">{stats.staff}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-bold">Staff</p>
                 </div>
                 <div className="w-px h-8 bg-slate-100"></div>
-                <div className="text-center">
-                    <p className="text-2xl font-bold text-slate-800">5</p>
+                <div className="text-center w-1/3">
+                    <p className="text-2xl font-bold text-slate-800">{stats.alerts}</p>
                     <p className="text-[10px] text-slate-400 uppercase font-bold">Alerts</p>
                 </div>
             </div>
