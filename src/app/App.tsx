@@ -17,7 +17,7 @@ import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminPanoramaUpload } from './components/AdminPanoramaUpload';
 import { AdminEventManagement } from './components/AdminEventManagement';
 import { AdminNotificationSender } from './components/AdminNotificationSender';
-import { AdminBusManagement } from './components/AdminBusManagement'; // <--- NEW IMPORT
+import { AdminBusManagement } from './components/AdminBusManagement'; 
 import { PostsDashboard } from './components/PostsDashboard'; 
 import { UserProfile } from './components/UserProfile'; 
 import { LostAndFound } from './components/LostAndFound';
@@ -36,7 +36,7 @@ type Screen =
   | 'community' | 'profile' | 'lost-found' | 'bus-schedule'
   | 'admin-dashboard' | 'admin-add-staff' | 'admin-path-drawing' 
   | 'admin-pick-location' | 'admin-panorama' | 'admin-events' 
-  | 'admin-notifications' | 'admin-bus'; // <--- ADDED ADMIN BUS SCREEN
+  | 'admin-notifications' | 'admin-bus';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('auth');
@@ -53,7 +53,6 @@ export default function App() {
   const [selectedLocationId, setSelectedLocationId] = useState<string | null>(null);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null); 
   
-  // State to track whose profile we are viewing
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
   
   const [activeTab, setActiveTab] = useState('home');
@@ -107,7 +106,6 @@ export default function App() {
     const channel = supabase.channel('public:notifications')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
              supabase.auth.getSession().then(({ data: { session } }) => {
-                 // Only alert if the notification belongs to the logged-in user
                  if (session && payload.new.user_id === session.user.id) {
                      fetchData(); // Refresh the list
                      toast.info("New Notification received!");
@@ -219,7 +217,7 @@ export default function App() {
       {currentScreen === 'student-map' && (
         <StudentMainMap
           onNavigateToLostFound={() => setCurrentScreen('lost-found')}
-          onNavigateToBus={() => setCurrentScreen('bus-schedule')} // <--- CONNECTED HERE
+          onNavigateToBus={() => setCurrentScreen('bus-schedule')}
           onNavigateToSearch={handleSearch}
           onNavigateToEvents={() => { setCurrentScreen('events'); setActiveTab('events'); }}
           onNavigateToNotifications={() => setActiveTab('notifications')}
@@ -286,7 +284,7 @@ export default function App() {
             onManagePanorama={() => setCurrentScreen('admin-panorama')} 
             onManageEvents={() => setCurrentScreen('admin-events')} 
             onManageNotifications={() => setCurrentScreen('admin-notifications')} 
-            onManageBus={() => setCurrentScreen('admin-bus')} // <--- CONNECTED HERE
+            onManageBus={() => setCurrentScreen('admin-bus')} 
             onSwitchToStudent={() => { setUserRole('student'); setCurrentScreen('student-map'); }} 
         />
       )}

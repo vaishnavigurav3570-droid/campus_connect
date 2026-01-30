@@ -85,7 +85,7 @@ export function AdminDashboard({
       <div className="flex-1 px-6 -mt-8 z-20 pb-10">
         <div className="grid grid-cols-1 gap-4">
             
-            {/* Quick Stats (Now Dynamic!) */}
+            {/* Quick Stats */}
             <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-around mb-2 animate-in fade-in slide-in-from-bottom-4">
                 <div className="text-center w-1/3">
                     <p className="text-2xl font-bold text-slate-800">{stats.events}</p>

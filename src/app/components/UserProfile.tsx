@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Button } from './ui/button';
-import { ArrowLeft, LogOut, User, MapPin, Calendar, Shield, Edit3, Trash2, Heart, MessageCircle, Hash, BookOpen, ShieldAlert, Navigation, CheckCircle, Clock } from 'lucide-react';
+import { ArrowLeft, LogOut, User, MapPin, Calendar, Shield, Edit3, Trash2, Heart, MessageCircle, Hash, BookOpen, ShieldAlert, Navigation, CheckCircle, Clock, Car } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ActiveMeetupSession } from './ActiveMeetupSession'; 
 
@@ -14,8 +14,13 @@ interface UserProfileProps {
 
 export function UserProfile({ session, targetUserId, onBack, onLogout }: UserProfileProps) {
   const [posts, setPosts] = useState<any[]>([]);
-  const [incomingClaims, setIncomingClaims] = useState<any[]>([]); // Requests received
-  const [outgoingClaims, setOutgoingClaims] = useState<any[]>([]); // Requests sent
+  // Lost & Found State
+  const [incomingClaims, setIncomingClaims] = useState<any[]>([]);
+  const [outgoingClaims, setOutgoingClaims] = useState<any[]>([]);
+  // Ride Request State (NEW)
+  const [incomingRides, setIncomingRides] = useState<any[]>([]);
+  const [outgoingRides, setOutgoingRides] = useState<any[]>([]);
+
   const [activeMeetupId, setActiveMeetupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
@@ -29,7 +34,8 @@ export function UserProfile({ session, targetUserId, onBack, onLogout }: UserPro
       fetchProfileData();
       if(isOwnProfile) {
           fetchIncomingClaims();
-          fetchOutgoingClaims(); // <--- Fetch my sent requests
+          fetchOutgoingClaims();
+          fetchRideRequests(); // <--- NEW
       }
     } else {
       setLoading(false);
@@ -51,50 +57,70 @@ export function UserProfile({ session, targetUserId, onBack, onLogout }: UserPro
     }
   };
 
-  // 1. Fetch Requests I Received (I am the Owner)
+  // --- LOST & FOUND FETCHERS ---
   const fetchIncomingClaims = async () => {
-      const { data } = await supabase
-        .from('item_claims')
-        .select(`*, profiles:requester_id(full_name), lost_items(title)`)
-        .eq('owner_id', session.user.id)
-        .eq('status', 'pending');
+      const { data } = await supabase.from('item_claims').select(`*, profiles:requester_id(full_name), lost_items(title)`).eq('owner_id', session.user.id).eq('status', 'pending');
       if (data) setIncomingClaims(data);
   };
-
-  // 2. Fetch Requests I Sent (I am the Requester)
   const fetchOutgoingClaims = async () => {
-      const { data } = await supabase
-        .from('item_claims')
-        .select(`*, profiles:owner_id(full_name), lost_items(title)`)
-        .eq('requester_id', session.user.id)
-        .neq('status', 'rejected'); // Show Pending and Accepted
+      const { data } = await supabase.from('item_claims').select(`*, profiles:owner_id(full_name), lost_items(title)`).eq('requester_id', session.user.id).neq('status', 'rejected');
       if (data) setOutgoingClaims(data);
   };
 
-  // Action: Accept Request (Owner)
+  // --- NEW: RIDE REQUEST FETCHERS ---
+  const fetchRideRequests = async () => {
+      // Incoming (I am the driver)
+      const { data: inRides } = await supabase.from('ride_requests').select(`*, profiles:requester_id(full_name)`).eq('owner_id', session.user.id).eq('status', 'pending');
+      if (inRides) setIncomingRides(inRides);
+
+      // Outgoing (I want a ride)
+      const { data: outRides } = await supabase.from('ride_requests').select(`*, profiles:owner_id(full_name)`).eq('requester_id', session.user.id).neq('status', 'rejected');
+      if (outRides) setOutgoingRides(outRides);
+  };
+
+  // --- ACTIONS ---
+
+  // Accept Lost Item Request
   const handleAcceptClaim = async (claim: any) => {
       await supabase.from('item_claims').update({ status: 'accepted' }).eq('id', claim.id);
-      
-      const { data: meetup } = await supabase.from('meetups').insert({
-          host_id: session.user.id,
-          guest_id: claim.requester_id,
-          lost_item_id: claim.item_id,
-          is_active: true
-      }).select().single();
-
+      const { data: meetup } = await supabase.from('meetups').insert({ host_id: session.user.id, guest_id: claim.requester_id, lost_item_id: claim.item_id, is_active: true }).select().single();
       if(meetup) setActiveMeetupId(meetup.id);
       fetchIncomingClaims();
   };
 
-  // Action: Join Live Session (Requester)
-  const handleJoinSession = async (claim: any) => {
-      // Find the active meetup for this item
-      const { data: meetup } = await supabase.from('meetups')
-        .select('*')
-        .eq('lost_item_id', claim.item_id)
-        .eq('is_active', true)
-        .single();
+ // NEW: Accept Ride Request & Decrement Seat
+  const handleAcceptRide = async (req: any) => {
+      // 1. Mark request as accepted
+      await supabase.from('ride_requests').update({ status: 'accepted' }).eq('id', req.id);
       
+      // 2. DECREMENT SEAT COUNT (New Logic)
+      const { data: post } = await supabase.from('posts').select('seats_available').eq('id', req.post_id).single();
+      
+      // Use (post.seats_available || 0) to prevent errors
+      if (post && (post.seats_available || 0) > 0) {
+          await supabase.from('posts')
+            .update({ seats_available: (post.seats_available || 0) - 1 })
+            .eq('id', req.post_id);
+      }
+
+      // 3. Create Meetup linked to Post
+      const { data: meetup } = await supabase.from('meetups').insert({ 
+          host_id: session.user.id, 
+          guest_id: req.requester_id, 
+          post_id: req.post_id, 
+          is_active: true 
+      }).select().single();
+
+      if(meetup) setActiveMeetupId(meetup.id);
+      fetchRideRequests();
+  };
+  // Join Session (Generic for both)
+  const handleJoinSession = async (itemId?: string, postId?: string) => {
+      let query = supabase.from('meetups').select('*').eq('is_active', true);
+      if (itemId) query = query.eq('lost_item_id', itemId);
+      if (postId) query = query.eq('post_id', postId); // <--- Support Ride ID
+      
+      const { data: meetup } = await query.single();
       if (meetup) setActiveMeetupId(meetup.id);
       else alert("Session not active yet. Wait for the owner.");
   };
@@ -152,54 +178,66 @@ export function UserProfile({ session, targetUserId, onBack, onLogout }: UserPro
             )}
         </div>
 
-        {/* --- SECTION 1: INCOMING REQUESTS (I need to share my location) --- */}
-        {isOwnProfile && incomingClaims.length > 0 && (
-            <div className="mb-4 bg-amber-50 border border-amber-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
-                <h3 className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2">
-                    <Navigation size={16}/> Requests Received
-                </h3>
-                <div className="space-y-3">
-                    {incomingClaims.map(claim => (
-                        <div key={claim.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-amber-100">
-                            <div>
-                                <p className="text-xs font-bold text-slate-800">{claim.profiles?.full_name}</p>
-                                <p className="text-[10px] text-slate-500">For item: <b>{claim.lost_items?.title}</b></p>
-                            </div>
-                            <button onClick={() => handleAcceptClaim(claim)} className="bg-blue-600 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 shadow-sm">
-                                Share Location
-                            </button>
+        {/* --- REQUESTS SECTION (Unified) --- */}
+        {isOwnProfile && (
+            <div className="space-y-4 mb-6">
+                
+                {/* 1. Incoming Item Claims */}
+                {incomingClaims.length > 0 && (
+                    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
+                        <h3 className="text-sm font-bold text-amber-800 mb-3 flex items-center gap-2"><Navigation size={16}/> Item Requests Received</h3>
+                        <div className="space-y-3">
+                            {incomingClaims.map(claim => (
+                                <div key={claim.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-amber-100">
+                                    <div><p className="text-xs font-bold text-slate-800">{claim.profiles?.full_name}</p><p className="text-[10px] text-slate-500">For: <b>{claim.lost_items?.title}</b></p></div>
+                                    <button onClick={() => handleAcceptClaim(claim)} className="bg-blue-600 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-blue-700 shadow-sm">Share Location</button>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-            </div>
-        )}
+                    </div>
+                )}
 
-        {/* --- SECTION 2: OUTGOING REQUESTS (I am waiting to join) --- */}
-        {isOwnProfile && outgoingClaims.length > 0 && (
-            <div className="mb-6 bg-blue-50 border border-blue-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
-                <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
-                    <MapPin size={16}/> My Requests
-                </h3>
-                <div className="space-y-3">
-                    {outgoingClaims.map(claim => (
-                        <div key={claim.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-blue-100">
-                            <div>
-                                <p className="text-xs font-bold text-slate-800">{claim.lost_items?.title}</p>
-                                <p className="text-[10px] text-slate-500">Owner: {claim.profiles?.full_name}</p>
-                            </div>
-                            
-                            {claim.status === 'accepted' ? (
-                                <button onClick={() => handleJoinSession(claim)} className="bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-600 shadow-sm animate-pulse">
-                                    Join Live Map
-                                </button>
-                            ) : (
-                                <span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1">
-                                    <Clock size={10}/> Pending
-                                </span>
-                            )}
+                {/* 2. NEW: Incoming Ride Requests */}
+                {incomingRides.length > 0 && (
+                    <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
+                        <h3 className="text-sm font-bold text-purple-800 mb-3 flex items-center gap-2"><Car size={16}/> Ride Requests</h3>
+                        <div className="space-y-3">
+                            {incomingRides.map(req => (
+                                <div key={req.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-purple-100">
+                                    <div><p className="text-xs font-bold text-slate-800">{req.profiles?.full_name}</p><p className="text-[10px] text-slate-500">Wants to join your ride</p></div>
+                                    <button onClick={() => handleAcceptRide(req)} className="bg-purple-600 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-purple-700 shadow-sm">Accept & Share</button>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )}
+
+                {/* 3. Outgoing Requests (Items & Rides) */}
+                {(outgoingClaims.length > 0 || outgoingRides.length > 0) && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 animate-in slide-in-from-top-2">
+                        <h3 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2"><MapPin size={16}/> My Sent Requests</h3>
+                        <div className="space-y-3">
+                            {/* Item Requests */}
+                            {outgoingClaims.map(claim => (
+                                <div key={claim.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-blue-100">
+                                    <div><p className="text-xs font-bold text-slate-800">{claim.lost_items?.title}</p><p className="text-[10px] text-slate-500">Item Claim</p></div>
+                                    {claim.status === 'accepted' ? (
+                                        <button onClick={() => handleJoinSession(claim.item_id, undefined)} className="bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-600 shadow-sm animate-pulse">Join Map</button>
+                                    ) : <span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><Clock size={10}/> Pending</span>}
+                                </div>
+                            ))}
+                            {/* Ride Requests */}
+                            {outgoingRides.map(req => (
+                                <div key={req.id} className="bg-white p-3 rounded-xl shadow-sm flex items-center justify-between border border-blue-100">
+                                    <div><p className="text-xs font-bold text-slate-800">Carpool Request</p><p className="text-[10px] text-slate-500">To: {req.profiles?.full_name}</p></div>
+                                    {req.status === 'accepted' ? (
+                                        <button onClick={() => handleJoinSession(undefined, req.post_id)} className="bg-emerald-500 text-white text-[10px] px-3 py-1.5 rounded-lg font-bold hover:bg-emerald-600 shadow-sm animate-pulse">Join Ride</button>
+                                    ) : <span className="bg-slate-100 text-slate-500 text-[10px] px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"><Clock size={10}/> Pending</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         )}
 
@@ -223,7 +261,7 @@ export function UserProfile({ session, targetUserId, onBack, onLogout }: UserPro
         </div>
         )}
 
-        {/* ACTIVITY & LOGOUT (Keep existing code) */}
+        {/* ACTIVITY & LOGOUT */}
         {!isProfileGuest && (
         <div className="mb-6">
             <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -234,7 +272,7 @@ export function UserProfile({ session, targetUserId, onBack, onLogout }: UserPro
                 {posts.map(post => (
                     <div key={post.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 relative group">
                         <div className="flex justify-between items-start mb-2">
-                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${post.category === 'travel' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{post.category}</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase ${post.category === 'ride' ? 'bg-purple-100 text-purple-600' : post.category === 'travel' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>{post.category}</span>
                             <span className="text-[10px] text-slate-300">{formatDistanceToNow(new Date(post.created_at))} ago</span>
                         </div>
                         <p className="text-sm text-slate-700 mb-3 line-clamp-2">{post.content}</p>

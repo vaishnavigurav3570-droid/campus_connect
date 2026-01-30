@@ -21,13 +21,11 @@ const TAG_COLORS = [
 ];
 const getRandomColor = () => TAG_COLORS[Math.floor(Math.random() * TAG_COLORS.length)];
 
-// 1. UPDATE INTERFACE
 interface PostsDashboardProps {
     onBack: () => void;
-    onViewUser?: (userId: string) => void; // <--- ADDED THIS
+    onViewUser?: (userId: string) => void;
 }
 
-// 2. UPDATE PROPS DESTRUCTURING
 export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
@@ -176,11 +174,38 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
       setCommentText('');
   };
 
+  // --- UPDATED: Request Ride (Instead of instant join) ---
   const handleJoinRide = async (post: Post) => {
-      if((post.seats_available || 0) <= 0) return;
-      if(!window.confirm("Request to join?")) return;
-      await supabase.from('posts').update({ seats_available: (post.seats_available || 1) - 1 }).eq('id', post.id);
-      await supabase.from('comments').insert({ post_id: post.id, user_id: session.user.id, content: `🚗 I'm joining this ride! (Seat booked)` });
+      if (!session) return;
+      if (post.user_id === session.user.id) return toast.error("You cannot request your own ride!");
+
+      // 1. Check if request already exists
+      const { data: existing } = await supabase.from('ride_requests')
+        .select('*')
+        .match({ post_id: post.id, requester_id: session.user.id })
+        .single();
+
+      if (existing) return toast.info("Request already sent.");
+
+      // 2. Insert Request (Status: pending)
+      const { error } = await supabase.from('ride_requests').insert({
+          post_id: post.id,
+          requester_id: session.user.id,
+          owner_id: post.user_id,
+          status: 'pending'
+      });
+
+      if (error) {
+          toast.error("Failed to send request");
+      } else {
+          toast.success("Ride Request Sent! Check your Profile.");
+          // Optional: Post a comment automatically
+          await supabase.from('comments').insert({ 
+              post_id: post.id, 
+              user_id: session.user.id, 
+              content: `🚗 Requested to join this ride!` 
+          });
+      }
   };
 
   const handleAcceptErrand = async (post: Post) => {
@@ -278,9 +303,12 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
                         <input className="text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 focus:ring-2 focus:ring-cyan-400 outline-none" placeholder="From location" value={tripOrigin} onChange={e => setTripOrigin(e.target.value)} />
                         <input className="text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 focus:ring-2 focus:ring-cyan-400 outline-none" placeholder="To destination" value={tripDest} onChange={e => setTripDest(e.target.value)} />
                         <input type="datetime-local" className="text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 outline-none text-cyan-900" value={tripTime} onChange={e => setTripTime(e.target.value)} />
-                        <select className="text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 outline-none bg-white text-cyan-900" value={tripMode} onChange={e => setTripMode(e.target.value as any)}>
-                            <option value="car">Car Ride</option><option value="bike">Bike Ride</option>
-                        </select>
+                        <div className="flex gap-2">
+                             <select className="flex-1 text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 outline-none bg-white text-cyan-900" value={tripMode} onChange={e => setTripMode(e.target.value as any)}>
+                                <option value="car">vehical Ride</option><option value="bike">Bike Ride</option>
+                             </select>
+                             <input type="number" min="1" max="8" className="w-16 text-sm p-2 rounded-lg border-0 ring-1 ring-cyan-200 outline-none text-cyan-900 text-center" value={seats} onChange={e => setSeats(parseInt(e.target.value))} title="Seats" />
+                        </div>
                     </div>
                 )}
 
@@ -339,7 +367,6 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
                             <div className="flex-1">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        {/* 3. CLICKABLE NAME TO VIEW PROFILE */}
                                         <button 
                                             onClick={() => onViewUser && onViewUser(post.user_id)}
                                             className="text-sm font-bold text-slate-900 leading-none mb-1 hover:text-cyan-600 hover:underline text-left block"
@@ -363,7 +390,7 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
                             </div>
                         </div>
 
-                        {/* Travel Details Card */}
+                     {/* Travel Details Card */}
                         {post.category === 'travel' && (
                              <div className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl mb-3 border border-slate-100">
                                 <div className="p-2 bg-white rounded-full shadow-sm text-blue-500"><Car size={16}/></div>
@@ -373,12 +400,28 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
                                         <span className="text-slate-300">➜</span> 
                                         <span className="font-medium text-slate-800">{post.trip_destination}</span>
                                     </div>
-                                    <span className="text-slate-400">Available Seats: <span className="text-slate-700 font-bold">{post.seats_available}</span></span>
+                                    
+                                    {/* SEAT COUNT LOGIC (Fixed) */}
+                                    {(post.seats_available || 0) === 0 ? (
+                                        <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded text-[10px] font-bold border border-red-100 flex items-center gap-1 w-fit">
+                                            <CheckCircle size={10} /> RIDE FULL
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-400">Available Seats: <span className="text-slate-700 font-bold">{post.seats_available}</span></span>
+                                    )}
                                 </div>
-                                {(post.seats_available || 0) > 0 && !isOwner && (
-                                    <button onClick={() => handleJoinRide(post)} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium transition-colors shadow-sm shadow-blue-200">
-                                            Join
-                                    </button>
+
+                                {/* BUTTON LOGIC (Fixed) */}
+                                {!isOwner && (
+                                    (post.seats_available || 0) > 0 ? (
+                                        <button onClick={() => handleJoinRide(post)} className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-full font-medium transition-colors shadow-sm shadow-blue-200">
+                                            Request Seat
+                                        </button>
+                                    ) : (
+                                        <button disabled className="text-xs bg-slate-200 text-slate-400 px-3 py-1.5 rounded-full font-bold cursor-not-allowed">
+                                            Full
+                                        </button>
+                                    )
                                 )}
                              </div>
                         )}
@@ -420,7 +463,7 @@ export function PostsDashboard({ onBack, onViewUser }: PostsDashboardProps) {
                                 {post.comments?.map((c:any) => (
                                     <div key={c.id} className="flex gap-2 items-start group">
                                          <div className="w-6 h-6 rounded-full bg-slate-200 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-slate-600 mt-1">
-                                            {c.profiles?.full_name?.[0]}
+                                             {c.profiles?.full_name?.[0]}
                                          </div>
                                          <div className="flex-1 bg-white p-2.5 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm relative">
                                             <div className="flex justify-between items-start">

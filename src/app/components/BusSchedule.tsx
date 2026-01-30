@@ -96,7 +96,7 @@ export function BusSchedule({ onBack }: BusScheduleProps) {
                         </div>
 
                         {/* Stops */}
-                        {bus.stops && (
+                        {bus.stops && bus.stops.length > 0 && (
                         <div className="space-y-2">
                             <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
                                 <MapPin size={12}/> Major Stops

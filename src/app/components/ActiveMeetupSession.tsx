@@ -122,15 +122,15 @@ export function ActiveMeetupSession({ session, meetupId, onClose }: ActiveMeetup
   return (
     <div className="fixed inset-0 z-[1000] bg-slate-50 flex flex-col animate-in slide-in-from-bottom-5">
         {/* Header */}
-        <div className="bg-white p-4 shadow-md border-b flex justify-between items-center z-10">
+        <div className="bg-white p-4 shadow-md border-b flex justify-between items-center z-20">
             <div>
-                <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                <h2 className="font-bold text-slate-800 flex items-center gap-4">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                     Live Meetup
                 </h2>
                 <p className="text-xs text-slate-500">Sharing location with {isHost ? 'Guest' : 'Host'}</p>
             </div>
-            <button onClick={stopSession} className="bg-red-50 text-red-600 px-3 py-1.5 rounded-full text-xs font-bold border border-red-200">
+            <button onClick={stopSession} className="bg-red-100 text-red-600 px-10 py-1.5 rounded-full text-xs font-bold border border-red-200">
                 End Session
             </button>
         </div>
