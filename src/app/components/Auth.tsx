@@ -1,145 +1,155 @@
-import React, { useState } from 'react'
-import { supabase } from '../supabaseClient'
-import { Button } from './ui/button'
-import { toast } from 'sonner'
-import { Map } from 'lucide-react'
+import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
+import { Button } from './ui/button';
+import { Mail, Lock, Loader2, ArrowRight, GraduationCap } from 'lucide-react';
+import { toast } from 'sonner';
 
-// NEW PROP: onGuestLogin
+// Import your logo
+// Note: If you see an error here, verify the number of '../' matches your folder structure.
+import LogoSrc from '../../assets/logo.jpeg'; 
+
 interface AuthProps {
-  onGuestLogin?: () => void;
+    onGuestLogin?: () => void;
 }
 
 export default function Auth({ onGuestLogin }: AuthProps) {
-  const [loading, setLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false) 
-  
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  const [fullName, setFullName] = useState('')
-  const [rollNo, setRollNo] = useState('')
-  const [department, setDepartment] = useState('Computer Engineering')
-  const [year, setYear] = useState('First Year')
+  const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
 
   const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      if (isSignUp) {
-        // CORRECT SIGN UP FLOW (Preserved)
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-              roll_no: rollNo,
-              department: department,
-              year: year
-            }
-          }
-        })
-
-        if (signUpError) throw signUpError
-
-        if (data.user) {
-           toast.success("Account created! You can now log in.")
-           setIsSignUp(false) 
+        if (isSignUp) {
+            const { error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: { data: { full_name: fullName } }
+            });
+            if (error) throw error;
+            toast.success("Account created! You can now log in.");
+            setIsSignUp(false);
+        } else {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
+            if (error) throw error;
+            toast.success("Welcome back!");
         }
-
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-        toast.success("Logged in successfully!")
-      }
     } catch (error: any) {
-      toast.error(error.message || "Authentication failed")
+        toast.error(error.message || "Authentication failed");
     } finally {
-      setLoading(false)
+        setLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="w-full max-w-sm p-6 bg-white rounded-xl shadow-lg border border-gray-100">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
-        <p className="text-sm text-gray-500">{isSignUp ? 'Join the GEC Community' : 'Sign in to continue'}</p>
-      </div>
+    <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 relative overflow-hidden font-sans">
+      
+      {/* BACKGROUND DECORATION */}
+      <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-r from-cyan-600 to-blue-600 transform -skew-y-3 origin-top-left z-0"></div>
+      <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-cyan-100 rounded-full blur-3xl opacity-50 z-0"></div>
 
-      <form onSubmit={handleAuth} className="flex flex-col gap-3">
-        
-        {isSignUp && (
-          <div className="space-y-3 animate-in slide-in-from-top-2 fade-in duration-300">
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Full Name</label>
-              <input className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white transition-all" type="text" placeholder="e.g. Vedant Gurav" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+      {/* LOGIN CARD */}
+      <div className="relative z-10 w-full max-w-md px-6">
+        <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-200/50 border border-white p-8 animate-in fade-in zoom-in duration-500">
+            
+            {/* LOGO SECTION */}
+            <div className="flex flex-col items-center mb-8">
+                <div className="w-20 h-20 bg-white rounded-2xl shadow-lg flex items-center justify-center mb-4 p-2 ring-4 ring-cyan-50">
+                    <img src={LogoSrc} alt="GEC Logo" className="w-full h-full object-contain" />
+                </div>
+                <h1 className="text-2xl font-bold text-slate-800 tracking-tight">GEC Navigator</h1>
+                <p className="text-slate-400 text-sm font-medium mt-1">Campus Connection Portal</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Roll No</label>
-                <input className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" type="text" placeholder="25B-CO-077" value={rollNo} onChange={(e) => setRollNo(e.target.value)} required />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-500 uppercase ml-1">Year</label>
-                <select className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" value={year} onChange={(e) => setYear(e.target.value)}>
-                  <option>First Year</option>
-                  <option>Second Year</option>
-                  <option>Third Year</option>
-                  <option>Final Year</option>
-                </select>
-              </div>
-            </div>
+            {/* FORM */}
+            <form onSubmit={handleAuth} className="space-y-4">
+                {isSignUp && (
+                    <div className="relative group">
+                        <GraduationCap className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
+                        <input 
+                            type="text" 
+                            placeholder="Full Name" 
+                            className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-10 py-3 outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all placeholder:text-slate-400"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            required
+                        />
+                    </div>
+                )}
 
-            <div>
-              <label className="text-xs font-bold text-gray-500 uppercase ml-1">Department</label>
-              <select className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" value={department} onChange={(e) => setDepartment(e.target.value)}>
-                <option>Computer Engineering</option>
-                <option>Information Technology</option>
-                <option>Electronics & Telecomm</option>
-                <option>Mechanical Engineering</option>
-                <option>Civil Engineering</option>
-                <option>Electrical Engineering</option>
-                <option>Mining Engineering</option>
-              </select>
-            </div>
-            <div className="h-px bg-gray-200 my-2" />
-          </div>
-        )}
+                <div className="relative group">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
+                    <input 
+                        type="email" 
+                        placeholder="College Email ID" 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-10 py-3 outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all placeholder:text-slate-400"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+                </div>
 
-        <div>
-           <label className="text-xs font-bold text-gray-500 uppercase ml-1">Email</label>
-           <input className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" type="email" placeholder="student@gec.ac.in" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                <div className="relative group">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
+                    <input 
+                        type="password" 
+                        placeholder="Password" 
+                        className="w-full bg-slate-50 border border-slate-200 text-slate-800 text-sm rounded-xl px-10 py-3 outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-400 transition-all placeholder:text-slate-400"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+                </div>
+
+                <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-cyan-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    disabled={loading}
+                >
+                    {loading ? <Loader2 className="animate-spin" size={20} /> : (isSignUp ? 'Create Account' : 'Sign In')}
+                </Button>
+            </form>
+
+            {/* TOGGLE SIGN UP */}
+            <div className="mt-6 text-center">
+                <p className="text-xs text-slate-400 mb-4">
+                    {isSignUp ? "Already have an ID?" : "New to campus?"} 
+                    <button 
+                        onClick={() => setIsSignUp(!isSignUp)} 
+                        className="text-cyan-600 font-bold ml-1 hover:underline"
+                    >
+                        {isSignUp ? "Login" : "Register"}
+                    </button>
+                </p>
+
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-slate-100"></div>
+                    <span className="flex-shrink-0 mx-4 text-slate-300 text-[10px] uppercase font-bold tracking-widest">Or continue as</span>
+                    <div className="flex-grow border-t border-slate-100"></div>
+                </div>
+
+                {/* GUEST BUTTON */}
+                <button 
+                    onClick={onGuestLogin}
+                    className="w-full mt-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm group"
+                >
+                    Visitor Access <ArrowRight size={16} className="text-slate-300 group-hover:text-cyan-500 transition-colors"/>
+                </button>
+            </div>
         </div>
         
-        <div>
-           <label className="text-xs font-bold text-gray-500 uppercase ml-1">Password</label>
-           <input className="w-full p-2 border rounded-lg bg-gray-50 focus:bg-white" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-
-        <Button className="w-full mt-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg shadow-md transition-all" disabled={loading}>
-          {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
-        </Button>
-      </form>
-
-      <button 
-        className="w-full mt-4 text-sm text-blue-500 hover:text-blue-700 font-medium hover:underline transition-colors"
-        onClick={() => setIsSignUp(!isSignUp)}
-        type="button"
-      >
-        {isSignUp ? 'Already have an account? Sign In' : 'New student? Create Account'}
-      </button>
-
-      {/* NEW: GUEST LOGIN BUTTON */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-        <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-gray-500">Or continue as</span></div>
+        {/* FOOTER */}
+        <p className="text-center text-slate-400 text-xs mt-8">
+            © 2026 Goa College of Engineering
+        </p>
       </div>
-
-      <Button variant="outline" onClick={onGuestLogin} className="w-full border-gray-300 hover:bg-gray-50 text-gray-700">
-         <Map className="w-4 h-4 mr-2"/> Visitor / Guest
-      </Button>
     </div>
-  )
+  );
 }

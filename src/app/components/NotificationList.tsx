@@ -1,129 +1,143 @@
 import React from 'react';
-import { Bell, AlertCircle, CheckCircle, Info, Calendar, ArrowLeft, BarChart2, Ban } from 'lucide-react';
 import { Button } from './ui/button';
-import { Notification } from '../types';
+import { ArrowLeft, Bell, Check, AlertTriangle, BarChart2, Clock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationListProps {
-  notifications: Notification[];
+  notifications: any[];
   onBack: () => void;
-  onVote: (noteId: string, optionId: string) => void; // <--- NEW PROP
+  onVote: (notificationId: string, optionId: string) => void;
 }
 
 export function NotificationList({ notifications, onBack, onVote }: NotificationListProps) {
-  // We NO LONGER need local state here because App.tsx handles it
-  const sorted = [...notifications].reverse();
-
-  const getIcon = (type: string) => {
-    switch(type) {
-      case 'alert': return <AlertCircle className="w-5 h-5 text-red-500" />;
-      case 'success': return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'poll': return <BarChart2 className="w-5 h-5 text-purple-500" />;
-      default: return <Info className="w-5 h-5 text-blue-500" />;
-    }
-  };
-
-  const getBgColor = (type: string) => {
-    switch(type) {
-      case 'alert': return 'bg-red-50 border-red-100';
-      case 'success': return 'bg-green-50 border-green-100';
-      case 'poll': return 'bg-purple-50 border-purple-100';
-      default: return 'bg-blue-50 border-blue-100';
-    }
-  };
+  
+  // Separate unread (new) from read (old) - Simulating logic if you don't have an 'isRead' field yet
+  // For now, we treat everything as "Recent" for the UI demo.
+  const sortedNotes = [...notifications].reverse(); 
 
   return (
-    <div className="h-full bg-white flex flex-col animate-in fade-in duration-300">
-      <div className="p-4 border-b sticky top-0 bg-white z-10 shadow-sm flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} className="-ml-2">
-          <ArrowLeft className="w-6 h-6 text-slate-600" />
-        </Button>
+    <div className="h-full bg-slate-50 flex flex-col font-sans animate-in slide-in-from-right duration-300">
+      
+      {/* --- HEADER --- */}
+      <div className="bg-white px-4 py-4 border-b border-slate-100 sticky top-0 z-20 flex items-center justify-between shadow-sm">
+        <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-slate-100 text-slate-500">
+                <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+                <h1 className="font-bold text-slate-800 text-lg leading-tight">Notifications</h1>
+                <p className="text-xs text-slate-400 font-medium">Updates & Alerts</p>
+            </div>
+        </div>
         <div className="flex items-center gap-2">
-          <Bell className="w-5 h-5 text-slate-800" />
-          <h2 className="text-lg font-bold text-slate-800">Campus Notices</h2>
+            <button className="text-[10px] font-bold text-cyan-600 bg-cyan-50 px-3 py-1.5 rounded-full hover:bg-cyan-100 transition-colors">
+                Mark all read
+            </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24">
-        {sorted.length === 0 ? (
-          <div className="text-center text-gray-400 mt-20 flex flex-col items-center">
-            <Bell className="w-12 h-12 mb-2 opacity-20" />
-            <p>No new notifications</p>
-          </div>
+      {/* --- LIST CONTENT --- */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
+        
+        {sortedNotes.length === 0 ? (
+             <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                    <Bell size={32} className="text-slate-300" />
+                </div>
+                <p className="font-bold text-slate-600">All caught up!</p>
+                <p className="text-xs">No new notifications for you.</p>
+             </div>
         ) : (
-          sorted.map(note => {
-            if (note.isDeleted) {
-              return (
-                <div key={note.id} className="p-3 rounded-xl border bg-gray-50 border-gray-200 flex items-center gap-3 opacity-70">
-                  <Ban className="w-5 h-5 text-gray-400" />
-                  <span className="text-sm italic text-gray-500">This message was deleted by admin</span>
-                </div>
-              );
-            }
+            sortedNotes.map(note => (
+                <div 
+                    key={note.id} 
+                    className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all ${
+                        note.type === 'alert' 
+                        ? 'bg-red-50 border-red-100' 
+                        : 'bg-white border-slate-100 hover:shadow-md'
+                    }`}
+                >
+                    {/* Left Colored Stripe */}
+                    <div className={`absolute top-0 left-0 w-1 h-full ${
+                        note.type === 'alert' ? 'bg-red-500' : 
+                        note.type === 'poll' ? 'bg-amber-500' : 'bg-cyan-500'
+                    }`}></div>
 
-            return (
-              <div key={note.id} className={`p-4 rounded-xl border ${getBgColor(note.type)} shadow-sm`}>
-                <div className="flex gap-3 items-start">
-                  <div className="mt-1 shrink-0">
-                    {getIcon(note.type)}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-bold text-gray-900 leading-tight">{note.title}</h3>
-                      {note.isEdited && (
-                        <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded ml-2">Edited</span>
-                      )}
-                    </div>
-                    
-                    <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{note.message}</p>
-                    
-                    {note.type === 'poll' && note.pollOptions && (
-                      <div className="mt-3 space-y-2">
-                        {note.pollOptions.map(opt => {
-                          const totalVotes = note.pollOptions?.reduce((a, b) => a + b.count, 0) || 1;
-                          const percent = Math.round((opt.count / totalVotes) * 100);
-                          const isSelected = note.votedOptionId === opt.id;
-                          
-                          return (
-                            <button
-                              key={opt.id}
-                              onClick={() => onVote(note.id, opt.id)} // <--- USE PROP HERE
-                              className={`w-full relative h-10 rounded-lg border overflow-hidden text-left px-3 text-xs font-bold transition-all ${
-                                isSelected 
-                                  ? 'bg-purple-50 border-purple-500 text-purple-800 ring-1 ring-purple-500' 
-                                  : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-200'
-                              }`}
-                            >
-                              {(note.votedOptionId) && (
-                                <div 
-                                  className={`absolute top-0 left-0 h-full transition-all duration-500 ${isSelected ? 'bg-purple-200/50' : 'bg-gray-100/50'}`}
-                                  style={{ width: `${percent}%` }}
-                                />
-                              )}
-                              
-                              <div className="relative z-10 flex justify-between w-full">
-                                <span className="flex items-center gap-2">
-                                  {isSelected && <CheckCircle className="w-3 h-3 text-purple-600" />}
-                                  {opt.text}
+                    <div className="flex gap-3 pl-2">
+                        {/* Icon */}
+                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
+                            note.type === 'alert' ? 'bg-red-100 text-red-600' : 
+                            note.type === 'poll' ? 'bg-amber-100 text-amber-600' : 'bg-cyan-50 text-cyan-600'
+                        }`}>
+                            {note.type === 'alert' ? <AlertTriangle size={20}/> : 
+                             note.type === 'poll' ? <BarChart2 size={20}/> : <Bell size={20}/>}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                                <h3 className={`text-sm font-bold ${note.type === 'alert' ? 'text-red-800' : 'text-slate-800'}`}>
+                                    {note.title}
+                                </h3>
+                                <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <Clock size={10}/>
+                                    {note.created_at ? formatDistanceToNow(new Date(note.created_at), { addSuffix: true }) : 'Just now'}
                                 </span>
-                                {note.votedOptionId && <span>{percent}% ({opt.count})</span>}
-                              </div>
-                            </button>
-                          );
-                        })}
-                        <p className="text-[10px] text-center text-gray-400">
-                          {note.votedOptionId ? "Tap another option to change vote" : "Tap an option to vote"}
-                        </p>
-                      </div>
-                    )}
+                            </div>
+                            
+                            <p className={`text-xs mb-3 ${note.type === 'alert' ? 'text-red-700' : 'text-slate-500'}`}>
+                                {note.message}
+                            </p>
 
-                    <div className="flex items-center gap-1 mt-2 text-xs text-gray-400 font-medium">
-                      <Calendar className="w-3 h-3" /> {note.date}
+                            {/* POLL LOGIC (Interactive) */}
+                            {note.type === 'poll' && note.pollOptions && (
+                                <div className="space-y-2 mt-3">
+                                    {note.pollOptions.map((opt: any) => {
+                                        const totalVotes = note.pollOptions.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0) || 1;
+                                        const percentage = Math.round(((opt.count || 0) / totalVotes) * 100);
+                                        const isSelected = note.votedOptionId === opt.id;
+
+                                        return (
+                                            <button 
+                                                key={opt.id}
+                                                onClick={() => onVote(note.id, opt.id)}
+                                                disabled={!!note.votedOptionId}
+                                                className={`w-full relative h-9 rounded-lg overflow-hidden border transition-all text-xs font-bold flex items-center justify-between px-3 ${
+                                                    isSelected 
+                                                    ? 'border-cyan-500 text-cyan-700 bg-cyan-50' 
+                                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {/* Progress Bar Background */}
+                                                <div 
+                                                    className={`absolute top-0 left-0 h-full opacity-20 transition-all duration-500 ${isSelected ? 'bg-cyan-500' : 'bg-slate-300'}`} 
+                                                    style={{ width: `${percentage}%` }}
+                                                ></div>
+                                                
+                                                <span className="relative z-10 flex items-center gap-2">
+                                                    {opt.text}
+                                                    {isSelected && <Check size={12} className="text-cyan-600"/>}
+                                                </span>
+                                                <span className="relative z-10 text-[10px]">{percentage}%</span>
+                                            </button>
+                                        );
+                                    })}
+                                    <p className="text-[10px] text-slate-400 text-right mt-1">
+                                        Total votes: {note.pollOptions.reduce((acc:any, curr:any) => acc + (curr.count || 0), 0)}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Attachment Button (If any) */}
+                            {note.attachmentUrl && (
+                                <Button size="sm" variant="outline" className="w-full mt-2 border-slate-200 text-slate-600 text-xs h-8">
+                                    View Attachment
+                                </Button>
+                            )}
+                        </div>
                     </div>
-                  </div>
                 </div>
-              </div>
-            );
-          })
+            ))
         )}
       </div>
     </div>

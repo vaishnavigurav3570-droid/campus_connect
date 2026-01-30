@@ -1,90 +1,159 @@
 import React from 'react';
 import { Button } from './ui/button';
-import { Users, Map, Calendar, LogOut, Eye, Bell } from 'lucide-react'; // Added Bell
+import { 
+  Users, Map, Calendar, Bell, LogOut, 
+  ChevronRight, Shield, Layers, PlusCircle, LayoutDashboard 
+} from 'lucide-react';
 
 interface AdminDashboardProps {
   onManageStaff: () => void;
   onDrawPaths: () => void;
+  onManagePanorama: () => void;
   onManageEvents: () => void;
-  onManagePanorama: () => void; 
-  onManageNotifications: () => void; // <--- NEW PROP
+  onManageNotifications: () => void;
   onSwitchToStudent: () => void;
 }
 
 export function AdminDashboard({ 
   onManageStaff, 
   onDrawPaths, 
+  onManagePanorama, 
   onManageEvents, 
-  onManagePanorama,
-  onManageNotifications,
+  onManageNotifications, 
   onSwitchToStudent 
 }: AdminDashboardProps) {
+
   return (
-    <div className="h-full bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white p-6 shadow-sm border-b flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-          <p className="text-slate-500">Manage GEC Navigator Data</p>
+    <div className="min-h-screen bg-slate-50 font-sans flex flex-col">
+      
+      {/* --- HEADER --- */}
+      <div className="bg-slate-900 text-white px-6 py-8 rounded-b-[2.5rem] shadow-2xl relative overflow-hidden">
+        {/* Decorative Circles */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-slate-800 rounded-full blur-3xl -mr-16 -mt-16 opacity-50 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-40 h-40 bg-cyan-900 rounded-full blur-2xl -ml-10 -mb-10 opacity-50 pointer-events-none"></div>
+
+        <div className="relative z-10 flex justify-between items-start">
+            <div>
+                <div className="flex items-center gap-2 mb-2 text-cyan-400">
+                    <Shield size={18} />
+                    <span className="text-xs font-bold uppercase tracking-widest">Administrator</span>
+                </div>
+                <h1 className="text-3xl font-bold mb-1">Command Center</h1>
+                <p className="text-slate-400 text-sm">Manage GEC Navigator & Campus Life</p>
+            </div>
+            
+            <button 
+                onClick={onSwitchToStudent}
+                className="bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 rounded-xl transition-all border border-white/10 text-slate-300 hover:text-white"
+                title="Exit Admin Mode"
+            >
+                <LogOut size={20} />
+            </button>
         </div>
-        <Button variant="outline" onClick={onSwitchToStudent} className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
-          <LogOut className="w-4 h-4" /> Logout
-        </Button>
       </div>
 
-      {/* Dashboard Grid */}
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        
-        {/* 1. Manage Staff */}
-        <div onClick={onManageStaff} className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition-all cursor-pointer group">
-          <div className="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-blue-600 transition-colors">
-            <Users className="w-6 h-6 text-blue-600 group-hover:text-white" />
-          </div>
-          <h3 className="font-bold text-lg text-slate-800">Manage Staff & Locations</h3>
-          <p className="text-slate-500 text-sm mt-1">Add faculty, assign cabins, and update office locations.</p>
-        </div>
+      {/* --- DASHBOARD GRID --- */}
+      <div className="flex-1 px-6 -mt-8 z-20 pb-10">
+        <div className="grid grid-cols-1 gap-4">
+            
+            {/* Quick Stats (Placeholder) */}
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-around mb-2">
+                <div className="text-center">
+                    <p className="text-2xl font-bold text-slate-800">12</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Events</p>
+                </div>
+                <div className="w-px h-8 bg-slate-100"></div>
+                <div className="text-center">
+                    <p className="text-2xl font-bold text-slate-800">48</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Staff</p>
+                </div>
+                <div className="w-px h-8 bg-slate-100"></div>
+                <div className="text-center">
+                    <p className="text-2xl font-bold text-slate-800">5</p>
+                    <p className="text-[10px] text-slate-400 uppercase font-bold">Alerts</p>
+                </div>
+            </div>
 
-        {/* 2. Draw Roads */}
-        <div onClick={onDrawPaths} className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition-all cursor-pointer group">
-          <div className="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-green-600 transition-colors">
-            <Map className="w-6 h-6 text-green-600 group-hover:text-white" />
-          </div>
-          <h3 className="font-bold text-lg text-slate-800">Draw Campus Roads</h3>
-          <p className="text-slate-500 text-sm mt-1">Trace walking paths on the map to fix navigation.</p>
-        </div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 mt-2">Core Management</p>
 
-        {/* 3. Manage 360 Views */}
-        <div onClick={onManagePanorama} className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition-all cursor-pointer group">
-          <div className="bg-purple-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-purple-600 transition-colors">
-            <Eye className="w-6 h-6 text-purple-600 group-hover:text-white" />
-          </div>
-          <h3 className="font-bold text-lg text-slate-800">Manage 360° Views</h3>
-          <p className="text-slate-500 text-sm mt-1">Upload panoramic images for departments and turns.</p>
-        </div>
+            {/* MANAGE STAFF */}
+            <DashboardCard 
+                title="Faculty & Staff" 
+                subtitle="Add or edit staff profiles"
+                icon={Users}
+                color="text-blue-600"
+                bgColor="bg-blue-50"
+                onClick={onManageStaff}
+            />
 
-        {/* 4. Events */}
-        <div onClick={onManageEvents} className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition-all cursor-pointer group">
-          <div className="bg-orange-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4 group-hover:bg-orange-600 transition-colors">
-            <Calendar className="w-6 h-6 text-orange-600 group-hover:text-white" />
-          </div>
-          <h3 className="font-bold text-lg text-slate-800">Manage Events</h3>
-          <p className="text-slate-500 text-sm mt-1">Schedule academic, cultural, and sports events.</p>
-        </div>
+            {/* MANAGE EVENTS */}
+            <DashboardCard 
+                title="Events & News" 
+                subtitle="Schedule campus activities"
+                icon={Calendar}
+                color="text-purple-600"
+                bgColor="bg-purple-50"
+                onClick={onManageEvents}
+            />
 
-        {/* 5. Notifications (NEW) */}
-        <div onClick={onManageNotifications} className="bg-white p-6 rounded-xl shadow-sm border hover:shadow-md transition-all cursor-pointer group md:col-span-2">
-          <div className="flex items-center gap-4">
-             <div className="bg-red-100 w-12 h-12 rounded-lg flex items-center justify-center group-hover:bg-red-600 transition-colors shrink-0">
-               <Bell className="w-6 h-6 text-red-600 group-hover:text-white" />
-             </div>
-             <div>
-                <h3 className="font-bold text-lg text-slate-800">Broadcast Notifications</h3>
-                <p className="text-slate-500 text-sm mt-1">Send urgent alerts or info messages to all students app-wide.</p>
-             </div>
-          </div>
-        </div>
+            {/* NOTIFICATIONS */}
+            <DashboardCard 
+                title="Alerts & Polls" 
+                subtitle="Send push notifications"
+                icon={Bell}
+                color="text-amber-600"
+                bgColor="bg-amber-50"
+                onClick={onManageNotifications}
+            />
 
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 mt-4">Map Configuration</p>
+
+            {/* PATH DRAWING */}
+            <DashboardCard 
+                title="Navigation Paths" 
+                subtitle="Draw roads & walkways"
+                icon={Map}
+                color="text-emerald-600"
+                bgColor="bg-emerald-50"
+                onClick={onDrawPaths}
+            />
+
+            {/* PANORAMA */}
+            <DashboardCard 
+                title="360° Views" 
+                subtitle="Upload location panoramas"
+                icon={Layers}
+                color="text-cyan-600"
+                bgColor="bg-cyan-50"
+                onClick={onManagePanorama}
+            />
+        </div>
       </div>
+      
+      <p className="text-center text-[10px] text-slate-300 py-4">
+        Restricted Access • Authorized Personnel Only
+      </p>
     </div>
   );
+}
+
+// Helper Component for Cards
+function DashboardCard({ title, subtitle, icon: Icon, color, bgColor, onClick }: any) {
+    return (
+        <button 
+            onClick={onClick}
+            className="w-full bg-white p-4 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-slate-200 transition-all flex items-center gap-4 group text-left"
+        >
+            <div className={`w-12 h-12 rounded-xl ${bgColor} ${color} flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform`}>
+                <Icon size={24} />
+            </div>
+            <div className="flex-1">
+                <h3 className="font-bold text-slate-800 text-sm">{title}</h3>
+                <p className="text-xs text-slate-500">{subtitle}</p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-slate-100 group-hover:text-slate-600 transition-colors">
+                <ChevronRight size={16} />
+            </div>
+        </button>
+    );
 }
