@@ -4,7 +4,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
   Search, Calendar, Bell, Users, User as UserIcon, 
-  Navigation, Map as MapIcon, AlertTriangle, Lock, Image as ImageIcon 
+  Navigation, Map as MapIcon, AlertTriangle, Lock, Image as ImageIcon, 
+  Search as SearchIcon, Bus 
 } from 'lucide-react';
 import { GEC_CENTER, locations as staticLocations, CAMPUS_ROADS } from '../data/mockData';
 import { NotificationList } from './NotificationList';
@@ -42,6 +43,17 @@ const createCustomIcon = (color: string) => L.divIcon({
   iconAnchor: [6, 6]
 });
 
+// Custom Icon for Events (Purple)
+const eventIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+// 1. UPDATE INTERFACE
 interface StudentMainMapProps {
   onNavigateToSearch: (query: string) => void;
   onNavigateToEvents: () => void;
@@ -49,6 +61,8 @@ interface StudentMainMapProps {
   onNavigateToPosts: () => void;
   onNavigateBackToMap: () => void;
   onNavigateToProfile: () => void;
+  onNavigateToLostFound: () => void;
+  onNavigateToBus: () => void; // <--- ADDED THIS LINE
   activeTab: string;
   notifications: any[];
   onVote: (noteId: string, optionId: string) => void;
@@ -66,6 +80,8 @@ export function StudentMainMap({
   onNavigateToPosts,
   onNavigateBackToMap,
   onNavigateToProfile,
+  onNavigateToLostFound, 
+  onNavigateToBus, // <--- DESTRUCTURED HERE
   activeTab,
   notifications,
   onVote,
@@ -84,7 +100,7 @@ export function StudentMainMap({
   const [currentSOSId, setCurrentSOSId] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length; 
 
   // 1. SOS & Realtime Logic
   useEffect(() => {
@@ -186,20 +202,20 @@ export function StudentMainMap({
   return (
     <div className="h-full w-full relative bg-slate-100 flex flex-col font-sans overflow-hidden">
       
-      {/* --- FLOATING HEADER (Glassmorphism Applied) --- */}
+      {/* --- FLOATING HEADER --- */}
       {!isSOSActive && (
       <div className="absolute top-0 left-0 w-full z-[500] p-4 flex flex-col gap-3 pointer-events-none">
         
         {/* Top Row: Logo & Bell */}
         <div className="flex justify-between items-center pointer-events-auto">
-            {/* LOGO - Now using .glass-panel */}
+            {/* LOGO */}
             <div className="glass-panel px-4 py-2 rounded-full flex items-center gap-2">
                 <img src={LogoSrc} alt="Logo" className="w-6 h-6 object-contain" />
                 <span className="text-xs font-bold text-slate-800 tracking-tight font-outfit">GEC Navigator</span>
             </div>
             
             {!isGuest && (
-            // BELL - Now using .glass-panel
+            // BELL
             <button onClick={onNavigateToNotifications} className="w-10 h-10 glass-panel rounded-full flex items-center justify-center text-slate-600 relative hover:scale-105 transition-transform active:scale-95">
                 <Bell size={20} />
                 {unreadCount > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white"></span>}
@@ -207,7 +223,7 @@ export function StudentMainMap({
             )}
         </div>
 
-        {/* Search Bar - Now using .glass-panel */}
+        {/* Search Bar */}
         <form onSubmit={handleSearch} className="pointer-events-auto shadow-xl shadow-slate-200/50">
             <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -227,17 +243,40 @@ export function StudentMainMap({
                 </button>
             </div>
         </form>
+
+        {/* --- QUICK ACTION BUTTONS --- */}
+        <div className="flex gap-2 w-full pointer-events-auto animate-in slide-in-from-top-2">
+            <button 
+                onClick={onNavigateToLostFound}
+                className="flex-1 glass-panel py-2.5 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-center gap-2 hover:bg-white active:scale-95 transition-all shadow-sm"
+            >
+                <SearchIcon size={14} className="text-red-500" /> Lost & Found
+            </button>
+            
+            {/* BUS BUTTON CONNECTED HERE */}
+            <button 
+                onClick={onNavigateToBus} 
+                className="flex-1 glass-panel py-2.5 rounded-xl text-xs font-bold text-slate-700 flex items-center justify-center gap-2 hover:bg-white active:scale-95 transition-all shadow-sm"
+            >
+               <Bus size={14} className="text-emerald-500"/> Bus Timing
+            </button>
+        </div>
+
       </div>
       )}
 
-      {/* --- SOS HEADER (Only visible during Emergency) --- */}
+      {/* --- SOS HEADER --- */}
       {isSOSActive && (
-        <div className="absolute top-0 left-0 w-full z-[600] bg-red-600 text-white p-3 flex justify-between items-center shadow-lg animate-pulse">
+        <div className="absolute top-0 left-0 w-full z-[600] bg-red-600 text-white p-3 flex items-center shadow-lg animate-pulse h-16">
             <div className="flex items-center gap-2 font-bold text-sm">
                 <AlertTriangle className="fill-current w-5 h-5" />
                 <span>EMERGENCY MODE ACTIVE</span>
             </div>
-            <button onClick={toggleSOS} className="bg-white text-red-600 px-4 py-1 rounded-full text-xs font-extrabold border-2 border-red-100 shadow-md">
+            
+            <button 
+                onClick={toggleSOS} 
+                className="ml-auto mr-28 bg-white text-red-600 px-6 py-2 rounded-full text-xs font-extrabold border-2 border-red-100 shadow-md hover:bg-red-50"
+            >
                 STOP
             </button>
         </div>
@@ -283,7 +322,7 @@ export function StudentMainMap({
             {/* 4. REAL EVENT PINS (Purple) */}
             {eventList.map((event) => (
                 (event.lat && event.lng) ? (
-                    <Marker key={event.id} position={[event.lat, event.lng]} icon={createCustomIcon('#7c3aed')}>
+                    <Marker key={event.id} position={[event.lat, event.lng]} icon={eventIcon}>
                         <Popup className="rounded-xl overflow-hidden p-0 border-none">
                             <div className="text-center p-2 min-w-[120px]">
                                 <h3 className="font-bold text-sm text-slate-800">{event.title}</h3>
@@ -341,8 +380,8 @@ export function StudentMainMap({
 
           <NavButton 
             active={activeTab === 'profile'} 
-            onClick={() => !isGuest && onNavigateToProfile()} 
-            icon={UserIcon} label="Profile" disabled={isGuest} 
+            onClick={() => onNavigateToProfile()} 
+            icon={UserIcon} label="Profile" disabled={false} 
           />
       </div>
     </div>

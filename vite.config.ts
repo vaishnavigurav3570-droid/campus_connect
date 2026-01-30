@@ -16,4 +16,10 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  // --- ADD THIS BLOCK TO FIX THE 404 ERROR ---
+  server: {
+    host: true,       // Listen on all addresses (0.0.0.0)
+    strictPort: true, // Ensure it stays on port 5173
+    allowedHosts: ['.devtunnels.ms'] // Explicitly allow the dev tunnel domain
+  },
 })

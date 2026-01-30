@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { 
   Users, Map, Calendar, Bell, LogOut, 
-  ChevronRight, Shield, Layers 
+  ChevronRight, Shield, Layers, Bus 
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -12,6 +12,7 @@ interface AdminDashboardProps {
   onManageEvents: () => void;
   onManageNotifications: () => void;
   onSwitchToStudent: () => void;
+  onManageBus: () => void;
 }
 
 export function AdminDashboard({ 
@@ -20,7 +21,9 @@ export function AdminDashboard({
   onManagePanorama, 
   onManageEvents, 
   onManageNotifications, 
+  onManageBus,
   onSwitchToStudent 
+  
 }: AdminDashboardProps) {
 
   // State to hold real numbers
@@ -130,6 +133,16 @@ export function AdminDashboard({
                 color="text-amber-600"
                 bgColor="bg-amber-50"
                 onClick={onManageNotifications}
+            />
+
+            {/* BUS ROUTES (New) */}
+            <DashboardCard 
+                title="Bus Routes" 
+                subtitle="Update timings & status"
+                icon={Bus}
+                color="text-rose-600"
+                bgColor="bg-rose-50"
+                onClick={onManageBus}
             />
 
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1 mt-4">Map Configuration</p>
