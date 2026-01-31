@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { Button } from './ui/button';
-import { ArrowLeft, Bell, BarChart2, AlertTriangle, Send, Trash2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Bell, BarChart2, Send, Trash2, Plus, X, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AdminNotificationSenderProps {
@@ -24,7 +24,7 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
   useEffect(() => {
     fetchNotifications();
 
-    // Subscribe to changes so the history updates instantly
+    // Subscribe to changes
     const channel = supabase.channel('admin_notifs')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, fetchNotifications)
       .subscribe();
@@ -33,7 +33,13 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
   }, []);
 
   const fetchNotifications = async () => {
-    const { data } = await supabase.from('notifications').select('*').order('created_at', { ascending: false });
+    // Only fetch Alerts and Polls (Hide likes/comments)
+    const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .in('type', ['alert', 'poll']) // <--- ADD THIS FILTER
+        .order('created_at', { ascending: false });
+        
     if (data) setNotifications(data);
   };
 
@@ -41,16 +47,20 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
   const handleSendAlert = async () => {
     if (!alertTitle || !alertMessage) return toast.error("Title and message required");
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const payload = {
-        title: alertTitle,
-        message: alertMessage,
-        type: isEmergency ? 'alert' : 'info', 
+        user_id: null, // Required for RLS
+        title: isEmergency ? `🚨 ${alertTitle}` : alertTitle, // Add emoji for emergency
+        content: alertMessage, // FIXED: DB uses 'content', not 'message'
+        type: 'alert',         // FIXED: DB only accepts 'alert' or 'poll'
         created_at: new Date().toISOString()
     };
 
     const { error } = await supabase.from('notifications').insert(payload);
     
     if (error) {
+        console.error(error);
         toast.error("Failed to send alert");
     } else {
         toast.success("Notification Broadcasted!");
@@ -65,27 +75,23 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
     const validOptions = pollOptions.filter(o => o.trim() !== '');
     if (!pollTitle || validOptions.length < 2) return toast.error("Poll needs title and at least 2 options");
 
-    // 1. Create Notification
-    const { data: noteData, error: noteError } = await supabase.from('notifications').insert({
-        title: "New Poll: " + pollTitle,
-        message: "Cast your vote now!",
+    const { data: { user } } = await supabase.auth.getUser();
+
+    // FIXED: Store options directly in the notifications table (Array)
+    const payload = {
+        user_id: user?.id,
+        title: pollTitle,
+        content: "Poll", // Placeholder content
         type: 'poll',
+        poll_options: validOptions, // Saving array directly
         created_at: new Date().toISOString()
-    }).select().single();
+    };
 
-    if (noteError || !noteData) return toast.error("Failed to create poll");
+    const { error } = await supabase.from('notifications').insert(payload);
 
-    // 2. Add Options
-    const optionsPayload = validOptions.map(text => ({
-        notification_id: noteData.id,
-        text: text,
-        count: 0
-    }));
-
-    const { error: optError } = await supabase.from('poll_options').insert(optionsPayload);
-
-    if (optError) {
-        toast.error("Poll created but options failed.");
+    if (error) {
+        console.error(error);
+        toast.error("Failed to create poll");
     } else {
         toast.success("Poll Published!");
         setPollTitle('');
@@ -152,7 +158,7 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
                             <input type="checkbox" className="w-5 h-5 accent-red-600" checked={isEmergency} onChange={e => setIsEmergency(e.target.checked)} />
                             <div>
                                 <p className="text-sm font-bold text-red-700">Mark as Emergency</p>
-                                <p className="text-[10px] text-red-500">Sends high-priority alert style</p>
+                                <p className="text-[10px] text-red-500">Adds 🚨 emoji and highlights alert</p>
                             </div>
                             <AlertTriangle className="ml-auto text-red-500" size={20}/>
                         </label>
@@ -196,9 +202,11 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
                                     )}
                                 </div>
                             ))}
-                            <button onClick={() => setPollOptions([...pollOptions, ''])} className="text-xs font-bold text-amber-600 flex items-center gap-1 hover:underline mt-1">
-                                <Plus size={14}/> Add Option
-                            </button>
+                            {pollOptions.length < 5 && (
+                                <button onClick={() => setPollOptions([...pollOptions, ''])} className="text-xs font-bold text-amber-600 flex items-center gap-1 hover:underline mt-1">
+                                    <Plus size={14}/> Add Option
+                                </button>
+                            )}
                         </div>
 
                         <Button onClick={handleCreatePoll} className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 rounded-xl">
@@ -228,7 +236,7 @@ export function AdminNotificationSender({ onBack }: AdminNotificationSenderProps
                                 <span className="text-[10px] text-slate-400">{new Date(note.created_at).toLocaleDateString()}</span>
                             </div>
                             <h4 className="font-bold text-slate-800 text-sm">{note.title}</h4>
-                            <p className="text-xs text-slate-500 line-clamp-2">{note.message}</p>
+                            <p className="text-xs text-slate-500 line-clamp-2">{note.content}</p> {/* FIXED: Use content */}
                             
                             <button onClick={() => deleteNotification(note.id)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Trash2 size={14}/>

@@ -1,136 +1,145 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
-import { Button } from './ui/button';
-import { ArrowLeft, Bell, Check, AlertTriangle, BarChart2, Clock, Heart, MessageCircle, MapPin } from 'lucide-react';
+import { ArrowLeft, Bell, BarChart2, CheckCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationListProps {
   notifications: any[];
   onBack: () => void;
-  onVote: (notificationId: string, optionId: string) => void;
+  onVote: (notificationId: string, optionIndex: number) => void;
 }
 
 export function NotificationList({ notifications, onBack, onVote }: NotificationListProps) {
-  
-  // 1. AUTOMATICALLY MARK AS READ
-  useEffect(() => {
-    const markRead = async () => {
-      // Find IDs of unread notifications
-      const unreadIds = notifications
-        .filter(n => n.is_read === false) // Ensure we check the DB field 'is_read'
-        .map(n => n.id);
+  const [votes, setVotes] = useState<Record<string, any[]>>({}); // Stores all votes per poll
+  const [userVotes, setUserVotes] = useState<Record<string, number>>({}); // Stores MY vote per poll
+  const [userId, setUserId] = useState<string | null>(null);
 
-      if (unreadIds.length > 0) {
-        await supabase.from('notifications').update({ is_read: true }).in('id', unreadIds);
-      }
-    };
-    markRead();
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setUserId(data.session?.user.id || null));
+    fetchVotes();
+    
+    // Listen to INSERT, UPDATE, and DELETE (event: '*')
+    const channel = supabase.channel('public:poll_votes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'poll_votes' }, fetchVotes)
+        .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [notifications]);
 
+  const fetchVotes = async () => {
+    // 1. Rename 'data' to 'allVotes' to avoid confusion
+    const { data: allVotes } = await supabase.from('poll_votes').select('*');
+    
+    if (allVotes) {
+        // Group votes by notification_id
+        const grouped = allVotes.reduce((acc: any, vote: any) => {
+            if (!acc[vote.notification_id]) acc[vote.notification_id] = [];
+            acc[vote.notification_id].push(vote);
+            return acc;
+        }, {});
+        setVotes(grouped);
+
+        // Determine user's specific choices
+        if (userId) {
+            const myVotes = allVotes.filter(v => v.user_id === userId);
+            const myVoteMap = myVotes.reduce((acc: any, v: any) => ({ ...acc, [v.notification_id]: v.option_index }), {});
+            setUserVotes(myVoteMap);
+        } else {
+             // If user logged out or session loading, check session again
+             // 2. Rename destructuring to 'sessionData' to avoid shadowing
+             supabase.auth.getSession().then(({ data: sessionData }) => {
+                 if (sessionData.session?.user.id) {
+                     // 3. Use 'allVotes' here correctly
+                     const myVotes = allVotes.filter((v:any) => v.user_id === sessionData.session?.user.id);
+                     const myVoteMap = myVotes.reduce((acc: any, v: any) => ({ ...acc, [v.notification_id]: v.option_index }), {});
+                     setUserVotes(myVoteMap);
+                 }
+             });
+        }
+    }
+  };
+
+  const calculatePercentage = (notifId: string, optionIndex: number) => {
+      const allVotes = votes[notifId] || [];
+      if (allVotes.length === 0) return 0;
+      const optionVotes = allVotes.filter(v => v.option_index === optionIndex).length;
+      return Math.round((optionVotes / allVotes.length) * 100);
+  };
+
+  const getOptionCount = (notifId: string, optionIndex: number) => {
+      const allVotes = votes[notifId] || [];
+      return allVotes.filter(v => v.option_index === optionIndex).length;
+  };
+
   return (
-    <div className="h-full bg-slate-50 flex flex-col font-sans animate-in slide-in-from-right duration-300">
-      
-      {/* --- HEADER --- */}
-      <div className="bg-white px-4 py-4 border-b border-slate-100 sticky top-0 z-20 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full hover:bg-slate-100 text-slate-500">
-                <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-                <h1 className="font-bold text-slate-800 text-lg leading-tight">Notifications</h1>
-                <p className="text-xs text-slate-400 font-medium">Recent Activity</p>
-            </div>
-        </div>
+    <div className="h-full bg-slate-50 flex flex-col font-sans animate-in slide-in-from-right">
+      <div className="bg-white px-4 py-4 border-b border-slate-100 sticky top-0 z-20 flex items-center gap-3 shadow-sm">
+        <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><ArrowLeft size={20}/></button>
+        <h1 className="font-bold text-slate-800 text-lg">Notifications</h1>
       </div>
 
-      {/* --- LIST CONTENT --- */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-20">
-        
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {notifications.length === 0 ? (
-             <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                    <Bell size={32} className="text-slate-300" />
-                </div>
-                <p className="font-bold text-slate-600">All caught up!</p>
-                <p className="text-xs">No new notifications for you.</p>
-             </div>
+            <div className="text-center py-20 text-slate-400">
+                <Bell size={40} className="mx-auto mb-2 opacity-20"/>
+                <p>No new notifications</p>
+            </div>
         ) : (
             notifications.map(note => (
-                <div 
-                    key={note.id} 
-                    className={`relative overflow-hidden rounded-2xl border p-4 shadow-sm transition-all ${
-                        !note.is_read ? 'bg-blue-50/40 border-blue-100' : 'bg-white border-slate-100'
-                    }`}
-                >
-                    {/* Left Colored Stripe based on Type */}
-                    <div className={`absolute top-0 left-0 w-1 h-full ${
-                        note.type === 'alert' ? 'bg-red-500' : 
-                        note.type === 'poll' ? 'bg-amber-500' : 
-                        note.type === 'like' ? 'bg-rose-500' :
-                        note.type === 'meetup' ? 'bg-emerald-500' :
-                        'bg-cyan-500' // Comment/Default
-                    }`}></div>
-
-                    <div className="flex gap-3 pl-2">
-                        {/* Dynamic Icon */}
-                        <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center ${
-                            note.type === 'alert' ? 'bg-red-100 text-red-600' : 
-                            note.type === 'poll' ? 'bg-amber-100 text-amber-600' : 
-                            note.type === 'like' ? 'bg-rose-100 text-rose-500' :
-                            note.type === 'meetup' ? 'bg-emerald-100 text-emerald-600' :
-                            'bg-cyan-50 text-cyan-600'
-                        }`}>
-                            {note.type === 'alert' ? <AlertTriangle size={20}/> : 
-                             note.type === 'poll' ? <BarChart2 size={20}/> : 
-                             note.type === 'like' ? <Heart size={20} className="fill-current"/> :
-                             note.type === 'meetup' ? <MapPin size={20}/> :
-                             <MessageCircle size={20}/>}
+                <div key={note.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                    <div className="flex items-start gap-3 mb-2">
+                        <div className={`p-2 rounded-full ${note.type === 'poll' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {note.type === 'poll' ? <BarChart2 size={18}/> : <Bell size={18}/>}
                         </div>
-
-                        {/* Content */}
                         <div className="flex-1">
-                            <div className="flex justify-between items-start mb-1">
-                                <h3 className="text-sm font-bold text-slate-800">
-                                    {/* Display Sender Name if available (Social), otherwise Title (System) */}
-                                    {note.profiles?.full_name || note.title || 'Notification'}
-                                </h3>
-                                <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                    <Clock size={10}/>
-                                    {note.created_at ? formatDistanceToNow(new Date(note.created_at), { addSuffix: true }) : 'Just now'}
-                                </span>
-                            </div>
-                            
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                                {note.content || note.message}
-                            </p>
-
-                            {/* POLL RENDERER (If data exists) */}
-                            {note.type === 'poll' && note.pollOptions && (
-                                <div className="space-y-2 mt-3">
-                                    {note.pollOptions.map((opt: any) => {
-                                        const totalVotes = note.pollOptions.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0) || 1;
-                                        const percentage = Math.round(((opt.count || 0) / totalVotes) * 100);
-                                        const isSelected = note.votedOptionId === opt.id;
-
-                                        return (
-                                            <button 
-                                                key={opt.id}
-                                                onClick={() => onVote(note.id, opt.id)}
-                                                disabled={!!note.votedOptionId}
-                                                className={`w-full relative h-9 rounded-lg overflow-hidden border transition-all text-xs font-bold flex items-center justify-between px-3 ${
-                                                    isSelected ? 'border-cyan-500 text-cyan-700 bg-cyan-50' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                <div className={`absolute top-0 left-0 h-full opacity-20 transition-all duration-500 ${isSelected ? 'bg-cyan-500' : 'bg-slate-300'}`} style={{ width: `${percentage}%` }}></div>
-                                                <span className="relative z-10 flex items-center gap-2">{opt.text} {isSelected && <Check size={12} className="text-cyan-600"/>}</span>
-                                                <span className="relative z-10 text-[10px]">{percentage}%</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
+                            <h3 className="font-bold text-slate-800">{note.title}</h3>
+                            <p className="text-xs text-slate-400">{formatDistanceToNow(new Date(note.created_at))} ago</p>
                         </div>
                     </div>
+                    
+                    <p className="text-sm text-slate-600 mb-4 pl-12">{note.content}</p>
+
+                    {/* POLL RENDERING */}
+                    {note.type === 'poll' && note.poll_options && (
+                        <div className="pl-12 space-y-2">
+                            {note.poll_options.map((opt: string, idx: number) => {
+                                const isVoted = userVotes[note.id] === idx;
+                                const percentage = calculatePercentage(note.id, idx);
+                                const count = getOptionCount(note.id, idx);
+                                
+                                return (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => onVote(note.id, idx)}
+                                        className={`w-full relative overflow-hidden rounded-xl border transition-all h-10 ${
+                                            isVoted ? 'border-purple-500 bg-purple-50 ring-1 ring-purple-200' : 'border-slate-200 bg-white hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {/* Progress Bar Background */}
+                                        <div 
+                                            className="absolute top-0 left-0 h-full bg-purple-100 transition-all duration-500" 
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                        
+                                        {/* Content */}
+                                        <div className="absolute inset-0 flex items-center justify-between px-4 z-10">
+                                            <div className="flex items-center gap-2">
+                                                {isVoted && <CheckCircle size={12} className="text-purple-600" />}
+                                                <span className={`text-xs font-bold ${isVoted ? 'text-purple-900' : 'text-slate-700'}`}>
+                                                    {opt}
+                                                </span>
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-500">
+                                                {percentage}% <span className="text-[10px] font-normal opacity-70">({count})</span>
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                            <p className="text-[10px] text-slate-400 text-right mt-1">
+                                {(votes[note.id] || []).length} total votes • Click option to vote/unvote
+                            </p>
+                        </div>
+                    )}
                 </div>
             ))
         )}

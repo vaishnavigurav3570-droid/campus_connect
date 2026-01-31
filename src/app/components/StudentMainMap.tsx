@@ -62,10 +62,10 @@ interface StudentMainMapProps {
   onNavigateBackToMap: () => void;
   onNavigateToProfile: () => void;
   onNavigateToLostFound: () => void;
-  onNavigateToBus: () => void; // <--- ADDED THIS LINE
+  onNavigateToBus: () => void; 
   activeTab: string;
   notifications: any[];
-  onVote: (noteId: string, optionId: string) => void;
+  onVote: (notificationId: string, optionIndex: number) => void; // <--- Correct Type
   session: any;
   onLogout: () => void;
   isGuest?: boolean;
@@ -81,7 +81,7 @@ export function StudentMainMap({
   onNavigateBackToMap,
   onNavigateToProfile,
   onNavigateToLostFound, 
-  onNavigateToBus, // <--- DESTRUCTURED HERE
+  onNavigateToBus, 
   activeTab,
   notifications,
   onVote,
@@ -196,6 +196,7 @@ export function StudentMainMap({
   };
 
   if (activeTab === 'notifications' && !isGuest) {
+    // --- THIS LINE CONNECTS THE VOTING LOGIC ---
     return <NotificationList notifications={notifications} onBack={onNavigateBackToMap} onVote={onVote} />;
   }
 

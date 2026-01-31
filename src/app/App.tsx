@@ -87,16 +87,17 @@ export default function App() {
         const { data: eventData } = await supabase.from('events').select('*');
         if (eventData) setEventsList(eventData);
 
-        // C. Fetch Notifications
+        // C. Fetch Notifications (FIXED)
         const { data: { session } } = await supabase.auth.getSession();
         if (session && session.user.id !== 'guest') {
-            const { data: noteData } = await supabase
+            const { data: noteData, error } = await supabase
                 .from('notifications')
-                .select('*, profiles:actor_id(full_name)')
-                .eq('user_id', session.user.id)
+                .select('*') // Removed profiles:actor_id(full_name) to fix 400 error
+                .or(`user_id.eq.${session.user.id},user_id.is.null`) // Fetch personal OR global
                 .order('created_at', { ascending: false });
             
             if (noteData) setNotifications(noteData);
+            if (error) console.error("Notification Fetch Error:", error);
         }
     };
 
@@ -106,7 +107,8 @@ export default function App() {
     const channel = supabase.channel('public:notifications')
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, (payload) => {
              supabase.auth.getSession().then(({ data: { session } }) => {
-                 if (session && payload.new.user_id === session.user.id) {
+                 // Refresh if it's for me OR if it's for everyone (null)
+                 if (session && (payload.new.user_id === session.user.id || payload.new.user_id === null)) {
                      fetchData(); // Refresh the list
                      toast.info("New Notification received!");
                  }
@@ -156,6 +158,51 @@ export default function App() {
   const handleViewUserProfile = (userId: string) => {
       setViewingProfileId(userId);
       setCurrentScreen('profile');
+  };
+
+  // --- HANDLE POLL VOTING ---
+  // --- HANDLE POLL VOTING (DEBUG VERSION) ---
+ // --- HANDLE POLL VOTING (Retract & Switch Support) ---
+  const handleVote = async (notificationId: string, optionIndex: number) => {
+      if (!session) return;
+      
+      // 1. Check if user already voted on this poll
+      const { data: existingVote } = await supabase
+        .from('poll_votes')
+        .select('*')
+        .eq('notification_id', notificationId)
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (existingVote) {
+          if (existingVote.option_index === optionIndex) {
+              // A. User clicked the SAME option -> RETRACT VOTE (Delete)
+              const { error } = await supabase.from('poll_votes').delete().eq('id', existingVote.id);
+              if (!error) toast.success("Vote removed");
+          } else {
+              // B. User clicked a DIFFERENT option -> SWITCH VOTE (Update)
+              const { error } = await supabase
+                .from('poll_votes')
+                .update({ option_index: optionIndex })
+                .eq('id', existingVote.id);
+              
+              if (!error) toast.success("Vote updated");
+          }
+      } else {
+          // C. New Vote -> INSERT
+          const { error } = await supabase.from('poll_votes').insert({
+              notification_id: notificationId,
+              user_id: session.user.id,
+              option_index: optionIndex
+          });
+
+          if (error) {
+             console.error(error);
+             toast.error("Failed to vote");
+          } else {
+             toast.success("Vote recorded!");
+          }
+      }
   };
 
   const handleSearch = (query: string) => {
@@ -229,7 +276,7 @@ export default function App() {
           }}
           activeTab={activeTab}
           notifications={notifications}
-          onVote={() => {}}
+          onVote={handleVote} // Connected
           session={session}
           onLogout={handleLogout}
           isGuest={session?.user?.id === 'guest'}
